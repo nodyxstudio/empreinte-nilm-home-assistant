@@ -1,5 +1,9 @@
 # Nouveautés
 
+## 1.0.1
+
+- Icône d'Empreinte dans Home Assistant (dossier `brand`), pour la liste par défaut de HACS.
+
 ## 1.0.0
 
 Première version publique.
