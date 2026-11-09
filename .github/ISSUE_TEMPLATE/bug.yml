@@ -1,0 +1,41 @@
+name: Signaler un problème / Bug report
+description: Quelque chose ne marche pas comme prévu.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci ! Ne collez jamais de jeton, de mot de passe ou d'adresse de votre Home Assistant.
+        Please never paste tokens, passwords or your Home Assistant address.
+  - type: textarea
+    id: quoi
+    attributes:
+      label: Ce qui se passe / What happens
+      description: Ce que vous avez fait, ce que vous attendiez, ce que vous voyez.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version d'Empreinte
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: ha
+    attributes:
+      label: Version de Home Assistant
+      placeholder: "2026.11.0"
+    validations:
+      required: true
+  - type: input
+    id: capteur
+    attributes:
+      label: Capteur de puissance / Power sensor
+      description: Comment la puissance de la maison arrive dans HA (ZLinky, Lixee, Shelly EM…), et toutes les combien de secondes.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Journal / Logs
+      description: Paramètres → Système → Journaux, les lignes qui mentionnent « empreinte ».
+      render: text

@@ -1,0 +1,15 @@
+name: Proposer une idée / Feature request
+description: Un appareil mal reconnu, une amélioration, un nouveau compteur.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idee
+    attributes:
+      label: L'idée / The idea
+    validations:
+      required: true
+  - type: textarea
+    id: pourquoi
+    attributes:
+      label: Pourquoi / Why
+      description: Ce que ça changerait chez vous.

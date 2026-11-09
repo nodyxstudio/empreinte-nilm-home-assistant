@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions et idées / Questions & ideas
+    url: https://github.com/nodyxstudio/empreinte-nilm-home-assistant/discussions
+    about: Pour une question sur l'installation ou une idée, passez par les Discussions.
+  - name: Contact par e-mail / E-mail
+    url: mailto:nodyxstudio@gmail.com
+    about: Une question directe à l'auteur / A direct question to the author.

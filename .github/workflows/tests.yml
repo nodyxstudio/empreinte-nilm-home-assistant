@@ -1,0 +1,30 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    name: Algorithme sur des maisons simulées
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Tests rapides
+        run: |
+          python tests/test_scenarios.py
+          python tests/test_coordinator.py
+          python tests/test_bilan.py
+          python tests/test_conseils.py
+          python tests/test_clim.py
+          python tests/test_desinstallation.py
+          node tests/test_habits.mjs
+      - name: Suivi d'appareils
+        run: python tests/test_tracking.py

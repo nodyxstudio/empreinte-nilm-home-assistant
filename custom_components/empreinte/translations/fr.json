@@ -1,0 +1,44 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Empreinte",
+        "description": "Choisis le capteur qui donne la **puissance totale de la maison** en watts : compteur Linky (ZLinky, Lixee, TIC…), Shelly EM, pince ampèremétrique… Empreinte travaille sur cette seule courbe ; rien ne sort de ton Home Assistant.",
+        "data": {
+          "power_entity": "Capteur de puissance de la maison"
+        },
+        "data_description": {
+          "power_entity": "Puissance totale de toute la maison en direct (W), mise à jour toutes les quelques secondes."
+        }
+      }
+    },
+    "error": {
+      "not_found": "Ce capteur n'existe pas ou n'est pas encore disponible."
+    },
+    "abort": {
+      "already_configured": "Empreinte est déjà installé."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Réglages d'Empreinte",
+        "description": "Tout est facultatif. Laisse un champ vide s'il ne concerne pas ta maison.",
+        "data": {
+          "measured": "Prises connectées qui mesurent déjà un appareil",
+          "climate_entity": "Clim / pompe à chaleur",
+          "climate_energy": "Son compteur d'énergie",
+          "fridge_kwh_year": "Consommation du frigo",
+          "extra_lines": "Autres compteurs d'énergie estimés"
+        },
+        "data_description": {
+          "measured": "Leur puissance est retirée avant l'analyse (PC, télé…) : ces appareils ne sont jamais pris pour autre chose.",
+          "climate_entity": "Quand elle tourne, son compresseur fait monter et descendre la courbe : Empreinte ignore ces petits paliers au lieu d'inventer des appareils.",
+          "climate_energy": "Son propre compteur de kWh, s'il existe : elle a alors sa ligne dans le bilan par jour.",
+          "fridge_kwh_year": "kWh par an, sur son étiquette énergie. Trop discret pour être vu sur la courbe, il est estimé et retiré du « non identifié ». 0 = pas estimé.",
+          "extra_lines": "Par exemple des compteurs Powercalc (lampes, box internet, alarme) : retirés du « non identifié » dans le bilan, jamais ajoutés au tableau Énergie."
+        }
+      }
+    }
+  }
+}

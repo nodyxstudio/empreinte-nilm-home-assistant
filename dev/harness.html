@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><title>Empreinte (test local)</title></head>
+<body>
+<p id="wait" style="font-family:system-ui;padding:20px">Banc de test : appeler startHarness(jeton) depuis la console.</p>
+<script type="module">
+// Banc de test local : imite l'objet `hass` que Home Assistant donne au panneau.
+// Le jeton n'est jamais écrit ici : il est passé à la main, le temps d'un test.
+window.startHarness = async (token, url) => {   // url : wss://<ton-home-assistant>/api/websocket
+  const ws = new WebSocket(url);
+  let id = 0;
+  const pend = new Map();
+  const raw = msg => new Promise((res, rej) => { const i = ++id; pend.set(i, [res, rej]); ws.send(JSON.stringify({ ...msg, id: i })); });
+  // window.__mock(msg, résultat) permet de simuler des données pour tester l'affichage (rien n'est envoyé à HA).
+  const callWS = async msg => { const r = await raw(msg); return window.__mock ? window.__mock(msg, r) : r; };
+  await new Promise((res, rej) => {
+    ws.onmessage = ev => {
+      const m = JSON.parse(ev.data);
+      if (m.type === "auth_required") ws.send(JSON.stringify({ type: "auth", access_token: token }));
+      else if (m.type === "auth_ok") res();
+      else if (m.type === "auth_invalid") rej(new Error("auth"));
+      else if (m.type === "result") { const p = pend.get(m.id); if (p) { pend.delete(m.id); m.success ? p[0](m.result) : p[1](m.error); } }
+    };
+    ws.onerror = rej;
+  });
+  const states = await callWS({ type: "get_states" });
+  const hass = { callWS, themes: { darkMode: matchMedia("(prefers-color-scheme: dark)").matches }, states: Object.fromEntries(states.map(s => [s.entity_id, s])) };
+  document.getElementById("wait").remove();
+  await import("../custom_components/empreinte/frontend/empreinte-panel.js?v=dev");
+  const el = document.createElement("empreinte-panel");
+  document.body.appendChild(el);
+  el.hass = hass;
+  return "ok";
+};
+</script>
+</body>
+</html>

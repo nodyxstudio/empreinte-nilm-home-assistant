@@ -1,0 +1,44 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Empreinte",
+        "description": "Choose the sensor that gives the **total power of the house** in watts: a Linky meter (ZLinky, Lixee, TIC…), a Shelly EM, a clamp meter… Empreinte works on this single curve; nothing leaves your Home Assistant.",
+        "data": {
+          "power_entity": "House power sensor"
+        },
+        "data_description": {
+          "power_entity": "Live total power (W) of the whole house, updated every few seconds."
+        }
+      }
+    },
+    "error": {
+      "not_found": "This sensor does not exist or is not available yet."
+    },
+    "abort": {
+      "already_configured": "Empreinte is already set up."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Empreinte settings",
+        "description": "All optional. Leave a field empty if it does not apply to your home.",
+        "data": {
+          "measured": "Smart plugs that already measure a device",
+          "climate_entity": "Air conditioner / heat pump",
+          "climate_energy": "Its energy meter",
+          "fridge_kwh_year": "Fridge consumption",
+          "extra_lines": "Other estimated energy meters"
+        },
+        "data_description": {
+          "measured": "Their power is subtracted before the analysis (PC, TV…), so these devices are never mistaken for something else.",
+          "climate_entity": "While it runs, its compressor makes the curve go up and down: Empreinte ignores these small steps instead of inventing appliances.",
+          "climate_energy": "Its own kWh meter, if it has one: it gets its own line in the daily balance.",
+          "fridge_kwh_year": "kWh per year, from its energy label. Too small to be seen on the curve, it is estimated and taken out of « unidentified ». 0 = not estimated.",
+          "extra_lines": "For example Powercalc meters (lights, internet box, alarm): taken out of « unidentified » in the balance, never added to the Energy dashboard."
+        }
+      }
+    }
+  }
+}

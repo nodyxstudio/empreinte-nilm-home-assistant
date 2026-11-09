@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><title>Empreinte (maquette locale)</title></head>
+<body>
+<script type="module">
+// Banc de test sans Home Assistant. Données : dev/demo_data.js (maison imaginaire, ?demo) ou dev/mock_data.js
+// (facultatif, non suivi par git). ?page=appareils ouvre directement une page.
+const q = new URLSearchParams(location.search);
+await new Promise((res, rej) => { const sc = document.createElement("script"); sc.src = q.has("demo") ? "demo_data.js" : "mock_data.js"; sc.onload = res; sc.onerror = rej; document.head.appendChild(sc); });
+if (q.get("theme")) try { localStorage.setItem("empreinte-theme", q.get("theme")); } catch (e) { }
+// Les actions de catégorie sont imitées ici pour voir l'affichage ; rien n'est envoyé nulle part.
+const S = window.MOCK_STATE;
+const cat = cid => S.status.categories.find(c => c.id === cid);
+const actions = {
+  cat_create: m => S.status.categories.push({ id: "c" + Date.now(), name: m.name, dash: false, since: null, total: 0, power: 0 }),
+  cat_rename: m => { cat(m.cid).name = m.name; },
+  cat_delete: m => { S.groups.forEach(g => { if (g.cat === m.cid) g.cat = null; }); S.status.categories = S.status.categories.filter(c => c.id !== m.cid); },
+  cat_set: m => { S.groups.find(g => g.id === m.gid).cat = m.cid; },
+  cat_dash: m => { const c = cat(m.cid); c.dash = m.on; if (m.on && !c.since) c.since = Date.now() / 1000; },
+};
+const callWS = async m => {
+  if (m.type === "empreinte/state") return structuredClone(S);
+  if (m.type === "empreinte/day") return window.MOCK_DAYS[m.day] || { start: Date.parse(m.day + "T00:00:00"), step: 15, values: [], sub: [] };
+  if (m.type === "empreinte/action") { (actions[m.action] || (() => {}))(m); return structuredClone(S); }
+  if (m.type === "get_states") return [];
+  return null;
+};
+const hass = { callWS, themes: { darkMode: matchMedia("(prefers-color-scheme: dark)").matches }, states: {} };
+await import("../custom_components/empreinte/frontend/empreinte-panel.js?v=mock" + Date.now());
+const el = document.createElement("empreinte-panel");
+document.body.appendChild(el);
+el.hass = hass;
+if (q.has("prev")) setTimeout(() => { const root = el.shadowRoot || el; const doc = root.querySelector("iframe") ? root.querySelector("iframe").contentDocument : document; const b = doc.querySelector("#dprev"); if (b) b.click(); }, 1200);
+if (q.get("page")) setTimeout(() => { const root = el.shadowRoot || el; const doc = root.querySelector("iframe") ? root.querySelector("iframe").contentDocument : document; const a = doc.querySelector(`a[href="#/${q.get("page")}"]`); if (a) a.click(); }, 800);
+</script>
+</body>
+</html>

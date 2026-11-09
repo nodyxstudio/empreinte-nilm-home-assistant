@@ -1,0 +1,71 @@
+# Exemple de tableau de bord Empreinte (Home Assistant, vue en « sections »).
+#
+# Coller dans : Paramètres → Tableaux de bord → (un tableau) → ✏️ → ⋮ → Éditeur de configuration brute,
+# à l'intérieur de « views: ». Aucune carte à installer : uniquement des cartes de base.
+# Les capteurs « bilan » existent dès que le tableau Énergie de HA connaît la consommation du réseau et le prix du kWh.
+
+- title: Empreinte
+  path: empreinte
+  icon: mdi:fingerprint
+  type: sections
+  max_columns: 2
+  sections:
+    - type: grid
+      cards:
+        - type: heading
+          heading: Ce qui consomme
+          icon: mdi:lightning-bolt
+        - type: statistics-graph
+          title: Par jour, sur 2 semaines
+          period: day
+          days_to_show: 14
+          chart_type: bar
+          stat_types: [change]
+          entities:
+            # Ajoutez ici vos appareils et catégories validés, par exemple :
+            # - sensor.empreinte_categorie_electromenager_energie
+            # - sensor.empreinte_bouilloire_energie
+            - entity: sensor.empreinte_bilan_veille_energie
+              name: Veilles
+            - entity: sensor.empreinte_bilan_reste_energie
+              name: Non identifié
+        - type: markdown
+          content: >-
+            {% set l = state_attr('sensor.empreinte_bilan_classement', 'lignes') or [] %}
+            **Classement de {{ state_attr('sensor.empreinte_bilan_classement', 'periode') }}**
+
+            {% for r in l %}
+            {{ loop.index }}. {{ r.nom }} : {{ r.kwh | replace('.', ',') }} kWh · {{ r.eur | replace('.', ',') }} € ({{ r.pct }} %)
+            {% endfor %}
+
+    - type: grid
+      cards:
+        - type: heading
+          heading: Économies possibles
+          icon: mdi:piggy-bank
+        - type: tile
+          entity: sensor.empreinte_bilan_conseils
+          name: Jusqu'à, par an
+        - type: gauge
+          entity: sensor.empreinte_bilan_evolution
+          name: Ce mois-ci, par jour, comparé au précédent
+          min: -30
+          max: 30
+          needle: true
+          segments:
+            - from: -30
+              color: "#43a047"
+            - from: -3
+              color: "#9e9e9e"
+            - from: 3
+              color: "#e53935"
+        - type: markdown
+          content: >-
+            {% for t in state_attr('sensor.empreinte_bilan_conseils', 'conseils') or [] %}
+            **{{ t.titre }}** · ≈ {{ t.eur_an }} € par an
+
+            💡 {{ t.conseil }}
+
+            <small>📊 {{ t.constat }}</small>
+
+            {% endfor %}
