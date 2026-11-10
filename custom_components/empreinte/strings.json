@@ -21,7 +21,7 @@
   },
   "options": {
     "step": {
-      "init": {
+      "reglages": {
         "title": "Empreinte settings",
         "description": "All optional. Leave a field empty if it does not apply to your home.",
         "data": {
@@ -38,7 +38,33 @@
           "fridge_kwh_year": "kWh per year, from its energy label. Too small to be seen on the curve, it is estimated and taken out of « unidentified ». 0 = not estimated.",
           "extra_lines": "For example Powercalc meters (lights, internet box, alarm): taken out of « unidentified » in the balance, never added to the Energy dashboard."
         }
+      },
+      "init": {
+        "title": "Empreinte settings",
+        "menu_options": {
+          "reglages": "Settings (measured plugs, air conditioner, fridge, estimated meters)",
+          "prises": "Plugs shared by several appliances"
+        }
+      },
+      "prises": {
+        "title": "Shared plugs",
+        "description": "A smart plug that powers several appliances **never on at the same time** (for example the washing machine and the dryer). Empreinte reads the plug's curve and recognises which appliance ran.\n\nPlugs already set:\n{current}",
+        "data": {
+          "shared_plug": "Add or change a plug",
+          "shared_names": "Appliances plugged into it",
+          "shared_remove": "Remove these plugs"
+        },
+        "data_description": {
+          "shared_plug": "The power sensor (W) of the smart plug.",
+          "shared_names": "Their names, separated by commas: « Washing machine, Dryer ». Washing machine, dryer and dishwasher are recognised from the start (French names « Lave-linge », « Sèche-linge », « Lave-vaisselle » too); for others, confirm one programme of each in the Empreinte panel.",
+          "shared_remove": "Their Empreinte sensors are removed from Home Assistant."
+        }
       }
+    },
+    "error": {
+      "names_needed": "Give the names of the appliances plugged into it.",
+      "plug_needed": "Choose the smart plug.",
+      "house_sensor": "This is the whole-house sensor, not a plug."
     }
   }
 }

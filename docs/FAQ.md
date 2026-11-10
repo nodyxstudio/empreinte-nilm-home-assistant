@@ -44,6 +44,10 @@ Non. L'analyse tourne une fois par minute, en Python pur, sans bibliothèque à 
 
 Les suggestions (four, sèche-linge, bouilloire…) ne sont que des raccourcis. Dans **C'est…** ou **En ce moment, c'est…**, écrivez n'importe quel nom : pompe de piscine, aquarium, spa, borne de recharge… Un nouvel appareil est créé, et Empreinte l'apprend comme les autres après 2 ou 3 réponses.
 
+### J'ai une seule prise connectée pour deux appareils
+
+C'est prévu : **Configurer → Prises partagées**, choisissez la prise et écrivez les noms des appareils (« Lave-linge, Sèche-linge »). Ils ne doivent jamais tourner en même temps. Empreinte découpe chaque programme sur la courbe de la prise et reconnaît lequel a tourné. Lave-linge, sèche-linge et lave-vaisselle sont reconnus dès le départ ; pour d'autres appareils, confirmez un programme de chacun dans **Appareils**. Attention à la puissance maximale de la prise (souvent 3 680 W) : deux appareils qui chauffent en même temps la dépasseraient.
+
 ### Je me suis trompé en nommant un appareil
 
 Tout se corrige dans **Appareils** : renommer, supprimer l'appareil, le fusionner avec un autre ou le séparer en deux. Pour une seule utilisation : « Non, c'est… ». Empreinte réapprend à chaque correction, et le bouton **Annuler** revient sur la dernière action.

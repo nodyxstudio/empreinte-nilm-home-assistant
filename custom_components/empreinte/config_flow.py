@@ -8,7 +8,7 @@ from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import (CONF_CLIMATE, CONF_CLIMATE_ENERGY, CONF_EXTRA_LINES, CONF_FRIDGE_KWH, CONF_MEASURED,
-                    CONF_POWER_ENTITY, DOMAIN)
+                    CONF_POWER_ENTITY, CONF_SHARED, DOMAIN)
 
 # Mots qui trahissent le capteur de toute la maison (compteur Linky, Shelly EM, Lixee, Tic…)
 _HOUSE_WORDS = ("linky", "zlinky", "lixee", "papp", "sinsts", "reseau", "réseau", "grid", "compteur", "maison", "house",
@@ -76,13 +76,58 @@ class EmpreinteFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return EmpreinteOptions()
 
 
+def split_names(text: str) -> list[str]:
+    """« Lave-linge, Sèche-linge » -> ["Lave-linge", "Sèche-linge"] (sans doublon, sans vide)."""
+    out = []
+    for n in (text or "").replace(";", ",").replace("/", ",").replace(" ou ", ",").replace(" et ", ",").split(","):
+        n = n.strip()[:40]
+        if n and n.lower() not in (x.lower() for x in out):
+            out.append(n)
+    return out
+
+
 class EmpreinteOptions(config_entries.OptionsFlow):
-    """Réglages facultatifs : prises qui mesurent déjà un appareil, clim, frigo, autres compteurs estimés."""
+    """Réglages facultatifs : prises qui mesurent déjà un appareil, clim, frigo, autres compteurs estimés,
+    et prises partagées entre plusieurs appareils."""
 
     async def async_step_init(self, user_input=None):
+        return self.async_show_menu(step_id="init", menu_options=["reglages", "prises"])
+
+    async def async_step_reglages(self, user_input=None):
         if user_input is not None:
-            return self.async_create_entry(data=user_input)
+            # les prises partagées se règlent ailleurs : on les garde telles quelles
+            keep = {CONF_SHARED: self.config_entry.options[CONF_SHARED]} if CONF_SHARED in self.config_entry.options else {}
+            return self.async_create_entry(data={**keep, **user_input})
         coord = self.hass.data.get(DOMAIN, {}).get("coord")
         cur = dict(self.config_entry.options)
-        cur.setdefault(CONF_MEASURED, coord.measured if coord else [])
-        return self.async_show_form(step_id="init", data_schema=_options_schema(cur))
+        cur.setdefault(CONF_MEASURED, [m for m in coord.measured if m not in {p["entity"] for p in coord.shared_cfg}] if coord else [])
+        return self.async_show_form(step_id="reglages", data_schema=_options_schema(cur))
+
+    async def async_step_prises(self, user_input=None):
+        plugs = [dict(p) for p in self.config_entry.options.get(CONF_SHARED, [])]
+        errors = {}
+        if user_input is not None:
+            plug, names = user_input.get("shared_plug"), split_names(user_input.get("shared_names", ""))
+            gone = set(user_input.get("shared_remove") or [])
+            if plug and len(names) < 1:
+                errors["shared_names"] = "names_needed"
+            elif names and not plug:
+                errors["shared_plug"] = "plug_needed"
+            elif plug and plug == self.config_entry.data.get(CONF_POWER_ENTITY):
+                errors["shared_plug"] = "house_sensor"
+            else:
+                plugs = [p for p in plugs if p["entity"] not in gone and p["entity"] != plug]
+                if plug:
+                    plugs.append({"entity": plug, "names": names})
+                return self.async_create_entry(data={**self.config_entry.options, CONF_SHARED: plugs})
+        label = lambda p: f"{self.hass.states.get(p['entity']).name if self.hass.states.get(p['entity']) else p['entity']} : {', '.join(p['names'])}"
+        schema = {
+            vol.Optional("shared_plug"): _power_selector(classes=("power",)),
+            vol.Optional("shared_names"): selector.TextSelector(),
+        }
+        if plugs:
+            schema[vol.Optional("shared_remove")] = selector.SelectSelector(selector.SelectSelectorConfig(
+                options=[{"value": p["entity"], "label": label(p)} for p in plugs], multiple=True))
+        current = "\n".join(f"- {label(p)}" for p in plugs) or "—"
+        return self.async_show_form(step_id="prises", data_schema=vol.Schema(schema), errors=errors,
+                                    description_placeholders={"current": current})

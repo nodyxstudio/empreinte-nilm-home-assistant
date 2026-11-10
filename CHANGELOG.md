@@ -1,5 +1,10 @@
 # Nouveautés
 
+## 1.1.0
+
+- **Prises partagées** : une prise connectée pour plusieurs appareils jamais allumés ensemble (lave-linge et sèche-linge…). Empreinte découpe chaque programme sur la courbe de la prise et reconnaît lequel a tourné ; chacun a ses capteurs (en marche, puissance, énergie) et sa ligne possible dans le tableau Énergie. Un clic corrige, et il apprend.
+- Le bouton **Configurer** ouvre un menu : Réglages, ou Prises partagées.
+
 ## 1.0.1
 
 - Icône d'Empreinte dans Home Assistant (dossier `brand`), pour la liste par défaut de HACS.

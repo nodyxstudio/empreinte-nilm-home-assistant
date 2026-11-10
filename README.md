@@ -89,7 +89,7 @@ Téléchargez `empreinte.zip` dans la [dernière version](https://github.com/nod
 
 ## Réglages (facultatifs)
 
-**Paramètres → Appareils et services → Empreinte → Configurer.** Tout se change à tout moment.
+**Paramètres → Appareils et services → Empreinte → Configurer → Réglages.** Tout se change à tout moment.
 
 | Réglage | À quoi ça sert |
 |---|---|
@@ -98,6 +98,10 @@ Téléchargez `empreinte.zip` dans la [dernière version](https://github.com/nod
 | **Son compteur d'énergie** | Elle a alors sa propre ligne dans le bilan, lissée heure par heure. |
 | **Consommation du frigo** | En kWh par an, sur son étiquette énergie. Trop discret pour être vu, il est estimé et retiré du « non identifié ». |
 | **Autres compteurs estimés** | Par exemple des compteurs [Powercalc](https://github.com/bramstroker/homeassistant-powercalc) (lampes, box, alarme), retirés du « non identifié ». |
+
+### Une prise pour deux appareils
+
+Le lave-linge et le sèche-linge sur la même prise connectée, jamais allumés en même temps ? **Configurer → Prises partagées** : choisissez la prise et écrivez « Lave-linge, Sèche-linge ». Empreinte lit la courbe de la prise, découpe chaque programme et reconnaît **lequel des deux** a tourné : une chauffe au début puis le moteur pour le lave-linge, une chauffe tout du long (ou environ 600 W pour un modèle à pompe à chaleur) pour le sèche-linge. Chacun reçoit ses capteurs (en marche, puissance, énergie mesurée) et sa ligne dans le tableau Énergie. Dans **Appareils**, un clic sur le bon nom corrige un programme, et Empreinte apprend. Ça marche avec n'importe quels appareils : pour ceux qu'il ne connaît pas, confirmez un programme de chacun.
 
 ## Ce qu'il vous faut
 

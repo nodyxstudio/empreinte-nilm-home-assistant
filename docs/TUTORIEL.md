@@ -42,13 +42,15 @@ Au premier démarrage, il relit les **10 derniers jours** de l'historique de Hom
 
 ## 4. Les réglages qui améliorent tout (facultatif)
 
-**Paramètres → Appareils et services → Empreinte → Configurer** :
+**Paramètres → Appareils et services → Empreinte → Configurer → Réglages** :
 
 - **Prises qui mesurent déjà un appareil** : si le PC ou la télé ont une prise connectée, ajoutez-la. Leur puissance est retirée avant l'analyse.
 - **Clim / pompe à chaleur** : indispensable si vous en avez une. Son compresseur fait varier la courbe toute la journée ; sans ce réglage, Empreinte verrait des appareils qui n'existent pas.
 - **Son compteur d'énergie** : si votre clim donne ses kWh (MELCloud, Daikin, Airzone…), elle a sa ligne dans le bilan.
 - **Consommation du frigo** : le chiffre en kWh/an de son étiquette énergie (par exemple 250). Il est estimé et retiré du « non identifié ».
 - **Autres compteurs estimés** : des compteurs Powercalc ou autres pour les lampes, la box, l'alarme…
+
+Et dans **Configurer → Prises partagées** : une prise connectée qui alimente plusieurs appareils jamais allumés ensemble (lave-linge et sèche-linge, par exemple). Écrivez leurs noms séparés par une virgule. Empreinte reconnaît lequel a tourné à chaque programme, et chacun a ses propres capteurs. Les programmes apparaissent dans la page **Appareils**, avec un bouton par appareil pour corriger.
 
 ## 5. Les premiers jours : nommer ce qu'il découvre
 

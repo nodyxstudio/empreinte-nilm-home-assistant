@@ -1,13 +1,14 @@
 """Constantes d'Empreinte."""
 
 DOMAIN = "empreinte"
-VERSION = "1.0.1"
+VERSION = "1.1.0"
 CONF_POWER_ENTITY = "power_entity"        # la puissance de toute la maison (W) : le seul réglage obligatoire
 # Réglages facultatifs (modifiables à tout moment : Paramètres → Appareils et services → Empreinte → Configurer)
 CONF_MEASURED = "measured"                # prises connectées qui mesurent déjà un appareil (retirées de l'analyse)
 CONF_CLIMATE = "climate_entity"           # la clim / pompe à chaleur (son thermostat)
 CONF_CLIMATE_ENERGY = "climate_energy"    # … et son compteur d'énergie (kWh), s'il existe
 CONF_FRIDGE_KWH = "fridge_kwh_year"       # le frigo : sa consommation annuelle (étiquette énergie), 0 = pas estimé
+CONF_SHARED = "shared_plugs"             # prises partagées : [{"entity": prise, "names": [appareils branchés dessus]}]
 CONF_EXTRA_LINES = "extra_lines"          # autres compteurs d'énergie estimés (Powercalc…) à retirer du « non identifié »
 
 DATA_DIR = "empreinte"            # dans /config, donc inclus dans les sauvegardes HA

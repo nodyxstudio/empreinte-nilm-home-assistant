@@ -21,7 +21,7 @@
   },
   "options": {
     "step": {
-      "init": {
+      "reglages": {
         "title": "Réglages d'Empreinte",
         "description": "Tout est facultatif. Laisse un champ vide s'il ne concerne pas ta maison.",
         "data": {
@@ -38,7 +38,33 @@
           "fridge_kwh_year": "kWh par an, sur son étiquette énergie. Trop discret pour être vu sur la courbe, il est estimé et retiré du « non identifié ». 0 = pas estimé.",
           "extra_lines": "Par exemple des compteurs Powercalc (lampes, box internet, alarme) : retirés du « non identifié » dans le bilan, jamais ajoutés au tableau Énergie."
         }
+      },
+      "init": {
+        "title": "Réglages d'Empreinte",
+        "menu_options": {
+          "reglages": "Réglages (prises mesurées, clim, frigo, compteurs estimés)",
+          "prises": "Prises partagées entre plusieurs appareils"
+        }
+      },
+      "prises": {
+        "title": "Prises partagées",
+        "description": "Une prise connectée qui alimente plusieurs appareils **jamais allumés en même temps** (par exemple le lave-linge et le sèche-linge). Empreinte lit la courbe de la prise et reconnaît lequel des appareils a tourné.\n\nPrises déjà réglées :\n{current}",
+        "data": {
+          "shared_plug": "Ajouter ou modifier une prise",
+          "shared_names": "Les appareils branchés dessus",
+          "shared_remove": "Retirer ces prises"
+        },
+        "data_description": {
+          "shared_plug": "Le capteur de puissance (W) de la prise connectée.",
+          "shared_names": "Leurs noms, séparés par des virgules : « Lave-linge, Sèche-linge ». Lave-linge, sèche-linge et lave-vaisselle sont reconnus dès le départ ; pour les autres, confirme un programme de chacun dans le panneau Empreinte.",
+          "shared_remove": "Leurs capteurs Empreinte disparaissent de Home Assistant."
+        }
       }
+    },
+    "error": {
+      "names_needed": "Donne le nom des appareils branchés sur la prise.",
+      "plug_needed": "Choisis la prise connectée.",
+      "house_sensor": "C'est le capteur de toute la maison, pas une prise."
     }
   }
 }

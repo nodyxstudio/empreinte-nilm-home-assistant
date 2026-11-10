@@ -116,11 +116,35 @@ for i, (gid, (name, slot, cat, shape)) in enumerate(APPS.items()):
                    "conf": conf, "n_uses": len(mem), "n_sure": n_sure, "n_fixed": 0, "cat": cat, "P": p, "D": dur,
                    "shape": shape, "entities": [], "energy_dash": False})
 
+def shared_demo():
+    """Une prise partagée inventée : lave-linge et sèche-linge, quelques programmes de la semaine."""
+    plug = "sensor.prise_buanderie_puissance"
+    progs = [(-6, 9.5, "Lave-linge", 5100, 680, True, 1.0), (-6, 11.2, "Sèche-linge", 4600, 2900, False, 0.97),
+             (-4, 18.0, "Lave-linge", 3900, 310, False, 0.91), (-2, 10.0, "Lave-linge", 5200, 700, False, 0.88),
+             (-2, 12.0, None, 4200, 1900, False, 0.55), (-1, 20.5, "Sèche-linge", 6900, 1250, False, 0.93)]
+    runs = []
+    for i, (d, h, name, dur, wh, user, conf) in enumerate(progs):
+        start = (today + dt.timedelta(days=d, hours=h)).timestamp()
+        runs.append({"id": f"p{i + 1}", "start": start, "end": start + dur, "wh": wh, "name": name,
+                     "guess": name or "Sèche-linge", "conf": conf, "user": user, "D": dur})
+    runs.reverse()
+    week = (today - dt.timedelta(days=7)).timestamp()
+    apps = []
+    for n in ("Lave-linge", "Sèche-linge"):
+        mine = [r for r in runs if r["name"] == n]
+        apps.append({"name": n, "key": f"{plug}|{n}", "kwh": round(sum(r["wh"] for r in mine) / 1000, 3), "n": len(mine),
+                     "kwh7": round(sum(r["wh"] for r in mine if r["start"] >= week) / 1000, 3), "dash": n == "Lave-linge",
+                     "entities": [f"sensor.empreinte_prise_{'lave_linge' if n == 'Lave-linge' else 'seche_linge'}_energie"],
+                     "running": False})
+    return {"entity": plug, "name": "Prise buanderie", "power": 2, "apps": apps, "open": None, "runs": runs}
+
+
 state = {"groups": groups, "events": events, "kinds": {g[0]: g[0] for g in APPS.values()},
          "status": {"categories": [{"id": "menager", "name": "Électroménager", "dash": False, "since": None, "total": 0, "power": 0}],
                     "last_run": dt.datetime.now().timestamp(), "error": None, "n_events": len(events),
                     "first_sample": day0.timestamp(), "power_entity": "sensor.linky_puissance", "live": [], "can_undo": False,
-                    "pending": [], "running_since": None, "running_parts": [], "tracks": [], "measured": []}}
+                    "pending": [], "running_since": None, "running_parts": [], "tracks": [], "measured": [],
+                    "shared": [shared_demo()]}}
 out = os.path.join(os.path.dirname(__file__), "demo_data.js")
 open(out, "w", encoding="utf-8").write("// Maison imaginaire (python dev/make_demo.py) : aucune donnée réelle.\nwindow.MOCK_STATE = "
                                        + json.dumps(state, ensure_ascii=False) + ";\nwindow.MOCK_DAYS = " + json.dumps(days) + ";\n")

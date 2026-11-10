@@ -83,6 +83,10 @@ Download `empreinte.zip` from the [latest release](https://github.com/nodyxstudi
 | **Fridge consumption** | kWh per year from its energy label. Too small to be seen, it is estimated and taken out of "unidentified". |
 | **Other estimated meters** | For example [Powercalc](https://github.com/bramstroker/homeassistant-powercalc) meters (lights, router, alarm), taken out of "unidentified". |
 
+### One plug, two appliances
+
+Washing machine and dryer on the same smart plug, never on together? **Configure → Shared plugs**: pick the plug and type "Washing machine, Dryer". Empreinte reads the plug's own curve, cuts each programme and recognises **which one** ran (one heating phase then the motor for the washer; heating all along, or about 600 W for a heat-pump dryer). Each gets its own sensors (running, power, measured energy) and its line in the Energy dashboard. In **Appliances**, one click on the right name corrects a programme and Empreinte learns. Works with any appliances: for ones it does not know, confirm one programme of each.
+
 ## Requirements
 
 - **Home Assistant** 2024.11 or newer.

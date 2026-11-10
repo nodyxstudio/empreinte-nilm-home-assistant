@@ -970,12 +970,47 @@ function catsBlock() {
   <div class="groups" style="grid-template-columns:repeat(auto-fill,minmax(340px,1fr));margin-bottom:22px">${cs.map(catCard).join("")}</div>
   <h2 style="margin:0 0 10px">Appareils</h2>`;
 }
+// ---------- Prises partagées (lave-linge + sèche-linge sur la même prise…)
+function sharedBlock() {
+  const plugs = S.status.shared || [];
+  if (!plugs.length) return "";
+  return plugs.map(pl => {
+    const names = pl.apps.map(a => a.name);
+    const o = pl.open;
+    const now = o ? `<div class="banner">${icon("clock")}<div class="grow">En marche depuis ${fmtHM(o.start * 1000)} · ${fmtW(o.power)} · ${o.guess ? `c'est sans doute <b>${esc(o.guess)}</b>` : "trop tôt pour dire lequel"}</div></div>` : "";
+    const apps = pl.apps.map(a => `<div class="card" style="padding:12px;box-shadow:none">
+        <div class="dev-h"><div class="gicon" style="background:var(--good)">${icon(iconFor(a.name))}</div><div class="grow"><div style="font-weight:600">${esc(a.name)}${a.running ? ` <span class="pill ok">en marche</span>` : ""}</div><div class="muted" style="font-size:12.5px">${a.n} programme${a.n > 1 ? "s" : ""} reconnu${a.n > 1 ? "s" : ""}</div></div></div>
+        <div class="kv" style="margin-top:10px"><div><span>7 jours</span><b>${fmtKwh(a.kwh7)}</b></div><div><span>Coût</span><b>${fmtEur(a.kwh7)}</b></div><div><span>Depuis le début</span><b>${fmtKwh(a.kwh)}</b></div></div>
+        <div class="ent" style="margin-top:10px">${(a.entities || []).map(id => `<div><b>${esc(id)}</b><span>${esc(stateOf(id))}</span></div>`).join("") || "<div>Capteurs en cours de création…</div>"}</div>
+        <div style="margin-top:10px">${a.dash ? `<button class="btn sm" data-sh-dash="${esc(a.key)}" data-on="0">${icon("x")} Retirer du tableau Énergie</button>` : `<button class="btn sm primary" data-sh-dash="${esc(a.key)}" data-on="1">${icon("plus")} Ajouter au tableau Énergie</button>`}</div>
+      </div>`).join("");
+    const runs = pl.runs.map(r => {
+      const st = r.user ? `<span class="pill ok">${icon("check")}${esc(r.name)}</span>`
+        : r.name ? `<span class="muted">${esc(r.name)} · ${Math.round(r.conf * 100)} %</span>`
+        : r.guess ? `<span class="atyp">peut-être ${esc(r.guess)} ?</span>` : `<span class="atyp">${icon("help")}à confirmer</span>`;
+      const btns = names.map(n => `<button class="btn sm ${(r.user && r.name === n) ? "primary" : ""}" data-sh-run="${r.id}" data-name="${esc(n)}" ${(r.user && r.name === n) ? "disabled" : ""}>${esc(n)}</button>`).join("");
+      return `<div class="row"><div class="grow"><div class="t1">${fmtWhen(r.start * 1000)}</div><div class="t2">${fmtDur(r.D)} · ${fmtKwh(r.wh / 1000)} · ${st}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">${btns}</div></div>`;
+    }).join("") || `<div class="empty">Aucun programme terminé pour l'instant : le premier apparaîtra ici dès qu'il sera fini.</div>`;
+    return `<div class="card stack" style="gap:14px;margin-bottom:16px">
+      <div class="card-h"><div><h2>${icon("plug")} Prise partagée : ${esc(pl.name)}</h2><p>${names.map(esc).join(" ou ")} : jamais en même temps. Empreinte lit la courbe de la prise et reconnaît lequel a tourné. Un clic sur le bon nom corrige, et il apprend.</p></div><span class="pill">${fmtW(pl.power)} en ce moment</span></div>
+      ${now}
+      <div class="groups" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${apps}</div>
+      <div><p class="sub" style="font-size:12.5px;margin:0 0 6px">Derniers programmes</p><div class="list">${runs}</div></div>
+    </div>`;
+  }).join("");
+}
+function bindShared() {
+  $$("[data-sh-run]").forEach(b => b.onclick = () => act({ action: "shared_label", rid: b.dataset.shRun, name: b.dataset.name }, `Noté : « ${b.dataset.name} ». Les programmes qui lui ressemblent suivent`));
+  $$("[data-sh-dash]").forEach(b => b.onclick = () => act({ action: "shared_dash", key: b.dataset.shDash, on: b.dataset.on === "1" }, b.dataset.on === "1" ? "Ajouté au tableau Énergie" : "Retiré du tableau Énergie"));
+}
+
 function pageAppareils() {
   const gs = S.groups.filter(g => g.name || g.status === "valide").sort((a, b) => (a.status === "valide" ? 0 : 1) - (b.status === "valide" ? 0 : 1) || gstats(b.id).kwhWeek - gstats(a.id).kwhWeek);
-  if (!gs.length) return `<div class="page-h"><div><h1>Appareils</h1><p class="sub">Les appareils que tu as nommés apparaîtront ici.</p></div></div><div class="card empty">Aucun appareil nommé pour l'instant. Commence par les Découvertes.</div>`;
+  if (!gs.length) return `<div class="page-h"><div><h1>Appareils</h1><p class="sub">Les appareils que tu as nommés apparaîtront ici.</p></div></div>${sharedBlock()}<div class="card empty">Aucun appareil nommé pour l'instant. Commence par les Découvertes.</div>`;
   return `
   <div class="page-h"><div><h1>Appareils</h1><p class="sub">Les appareils que tu as nommés. Ceux qui sont validés ont leurs capteurs dans Home Assistant.</p></div></div>
   ${energyLogCard()}
+  ${sharedBlock()}
   ${catsBlock()}
   <div class="groups" style="grid-template-columns:repeat(auto-fill,minmax(340px,1fr))">${gs.map(g => {
     const st = gstats(g.id), days = Math.min(7, NDAYS), d0 = NDAYS - days;
@@ -1090,6 +1125,7 @@ async function render() {
   else if (page === "carte") { v.innerHTML = pageCarte(); drawScatter($("#scatter")); }
   else if (page === "appareils") {
     v.innerHTML = pageAppareils();
+    bindShared();
     $$("[data-val]").forEach(b => b.onclick = () => validateModal(b.dataset.val));
     $$("[data-energy-on]").forEach(b => b.onclick = () => act({ action: "energy_add", gid: b.dataset.energyOn }, `« ${gname(G(b.dataset.energyOn))} » ajouté dans le tableau Énergie`));
     $$("[data-energy-off]").forEach(b => b.onclick = () => act({ action: "energy_remove", gid: b.dataset.energyOff }, `« ${gname(G(b.dataset.energyOff))} » retiré du tableau Énergie`));

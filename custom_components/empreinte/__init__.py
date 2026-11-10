@@ -104,11 +104,11 @@ async def ws_day(hass, connection, msg):
 
 @websocket_api.websocket_command({
     vol.Required("type"): "empreinte/action",
-    vol.Required("action"): vol.In(["rename", "move", "confirm", "label", "maybe", "unmaybe", "doubt", "cancel_pending", "track_stop", "track_duration", "track_cancel", "label_now", "label_at", "energy_add", "energy_remove", "energy_undo", "energy_redo", "cat_create", "cat_rename", "cat_delete", "cat_set", "cat_dash", "merge", "split", "validate", "delete", "undo"]),
+    vol.Required("action"): vol.In(["rename", "move", "confirm", "label", "maybe", "unmaybe", "doubt", "cancel_pending", "track_stop", "track_duration", "track_cancel", "label_now", "label_at", "energy_add", "energy_remove", "energy_undo", "energy_redo", "cat_create", "cat_rename", "cat_delete", "cat_set", "cat_dash", "merge", "split", "validate", "delete", "undo", "shared_label", "shared_dash"]),
     vol.Optional("gid"): str, vol.Optional("name"): str, vol.Optional("ids"): [str],
     vol.Optional("target"): vol.Any(str, None), vol.Optional("src"): str, vol.Optional("dst"): str,
     vol.Optional("thr"): vol.Coerce(float), vol.Optional("maybe"): bool, vol.Optional("on"): bool, vol.Optional("cid"): vol.Any(str, None), vol.Optional("lid"): str,
-    vol.Optional("at"): vol.Any(None, vol.Coerce(float)), vol.Optional("t"): vol.Coerce(float), vol.Optional("tid"): str, vol.Optional("minutes"): vol.All(vol.Coerce(int), vol.Range(min=1, max=24 * 60)), vol.Optional("p"): vol.Any(None, vol.Coerce(float)),
+    vol.Optional("at"): vol.Any(None, vol.Coerce(float)), vol.Optional("t"): vol.Coerce(float), vol.Optional("tid"): str, vol.Optional("rid"): str, vol.Optional("key"): str, vol.Optional("minutes"): vol.All(vol.Coerce(int), vol.Range(min=1, max=24 * 60)), vol.Optional("p"): vol.Any(None, vol.Coerce(float)),
 })
 @websocket_api.require_admin
 @websocket_api.async_response

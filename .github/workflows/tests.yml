@@ -25,6 +25,7 @@ jobs:
           python tests/test_conseils.py
           python tests/test_clim.py
           python tests/test_desinstallation.py
+          python tests/test_partagee.py
           node tests/test_habits.mjs
       - name: Suivi d'appareils
         run: python tests/test_tracking.py

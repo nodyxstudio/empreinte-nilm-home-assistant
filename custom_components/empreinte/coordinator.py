@@ -18,8 +18,9 @@ from homeassistant.util import dt as dt_util
 
 from . import engine
 from .engine import engine_median
-from .const import (APPLIANCE_TIPS, CLIM_LAG_KWH, PROGRAMME_GAP_S, TIP_IDS, CLIM_MAX_W, VEILLE_NAME, HYP_MIN_DAYS, HYP_MIN_N, HYP_MIN_SCORE, AUTO_NAME_COHERENCE, AUTO_NAME_DAYS, AUTO_NAME_MARGIN, AUTO_NAME_MIN, AUTO_NAME_SCORE, BACKFILL_DAYS, CONF_CLIMATE, CONF_CLIMATE_ENERGY, CONF_EXTRA_LINES, CONF_FRIDGE_KWH, CONF_MEASURED, CONF_POWER_ENTITY, DATA_DIR, DB_FILE, DOMAIN,
+from .const import (APPLIANCE_TIPS, CLIM_LAG_KWH, PROGRAMME_GAP_S, TIP_IDS, CLIM_MAX_W, VEILLE_NAME, HYP_MIN_DAYS, HYP_MIN_N, HYP_MIN_SCORE, AUTO_NAME_COHERENCE, AUTO_NAME_DAYS, AUTO_NAME_MARGIN, AUTO_NAME_MIN, AUTO_NAME_SCORE, BACKFILL_DAYS, CONF_CLIMATE, CONF_CLIMATE_ENERGY, CONF_EXTRA_LINES, CONF_FRIDGE_KWH, CONF_MEASURED, CONF_SHARED, CONF_POWER_ENTITY, DATA_DIR, DB_FILE, DOMAIN,
                     EVENTS_SENT_DAYS, PROCESS_EVERY_S, SAMPLES_KEEP_DAYS)
+from .shared import SharedPlugs
 from .store import Store
 
 # Catégories : des appareils comptés ensemble, choisies par l'utilisateur. La première, « Électroménager »,
@@ -155,6 +156,8 @@ class Coordinator:
         self.clim_energy = opts.get(CONF_CLIMATE_ENERGY) or None
         self.fridge_kwh = float(opts.get(CONF_FRIDGE_KWH) or 0)
         self.extra_ids: list[str] = list(opts.get(CONF_EXTRA_LINES) or [])
+        self.shared_cfg: list[dict] = [p for p in (opts.get(CONF_SHARED) or []) if p.get("entity")]
+        self.shared = SharedPlugs(self.shared_cfg)
         self.store: Store | None = None
         self.rows: dict[int, dict] = {}       # id -> start, end, base, prof
         self.evs: list[engine.Ev] = []
@@ -189,6 +192,9 @@ class Coordinator:
         self.store = await self.hass.async_add_executor_job(Store, path)
         if CONF_MEASURED not in self.entry.options:
             self.measured = self._detect_measured()
+        for p in self.shared_cfg:                      # la prise partagée est retirée de la courbe, comme une prise mesurée
+            if p["entity"] not in self.measured:
+                self.measured.append(p["entity"])
         for eid in self.measured:
             self.sub_now[eid] = self._num(self.hass.states.get(eid))
         if await self.hass.async_add_executor_job(self.store.get_meta, "sub_for") != sorted(self.measured):
@@ -222,6 +228,7 @@ class Coordinator:
         self.cats = self.store.get_meta("categories", None) or [dict(c) for c in DEFAULT_CATS]
         self.energy_log = self.store.get_meta("energy_log", [])
         self.lines = self.store.get_meta("lines", None) or {"last": {}, "kwh": {}, "eur": {}, "names": {}}
+        self.shared = SharedPlugs(self.shared_cfg, self.store.get_meta("shared", None))
         self._line_adjust: dict = {}
         self._ranged = False
         self._clim_until = 0.0
@@ -416,10 +423,70 @@ class Coordinator:
             except Exception as err:  # on ne veut jamais casser HA
                 _LOGGER.exception("Empreinte : erreur pendant l'analyse")
                 self.last_error = str(err)
+        await self.async_shared()
         self.ensure_entities()
         self.push_entities()
         await self.async_sync_energy()
         await self.async_lines()
+
+    # ------------------------------------------------------------ prises partagées (lave-linge + sèche-linge…)
+    async def async_shared(self):
+        """Relit la courbe de chaque prise partagée depuis le dernier programme terminé et range les nouveaux."""
+        if not self.shared.plugs:
+            return
+        try:
+            from homeassistant.components.recorder import get_instance, history
+            now = time.time()
+            for p in self.shared.plugs:
+                eid = p["entity"]
+                start = dt_util.utc_from_timestamp(self.shared.since(eid, now, BACKFILL_DAYS * 86400))
+                res = await get_instance(self.hass).async_add_executor_job(
+                    lambda: history.state_changes_during_period(self.hass, start, None, entity_id=eid, include_start_time_state=True))
+                pts = []
+                for st in res.get(eid, []):
+                    try:
+                        pts.append((st.last_updated.timestamp(), float(st.state)))
+                    except (TypeError, ValueError):
+                        continue                              # indisponible : la valeur d'avant reste valable
+                async with self.lock:
+                    n = self.shared.ingest(eid, pts, now)
+                if n:
+                    _LOGGER.info("Empreinte : %s programme(s) de la prise %s rangé(s)", n, eid)
+            await self.hass.async_add_executor_job(self.store.set_meta, "shared", self.shared.state())
+        except Exception:  # une prise partagée ne doit jamais bloquer le reste
+            _LOGGER.exception("Empreinte : impossible de lire une prise partagée")
+
+    def _shared_action(self, msg):
+        a = msg["action"]
+        if a == "shared_label":
+            self.shared.label(msg["rid"], msg.get("name") or None)
+        elif a == "shared_dash":
+            key = msg["key"]
+            if key not in {self.shared.key(e, n) for e, n in self.shared.appliances()}:
+                raise KeyError(key)
+            self.shared.dash = [k for k in self.shared.dash if k != key] + ([key] if msg.get("on") else [])
+        self.store.set_meta("shared", self.shared.state())
+
+    def _shared_payload(self) -> list[dict]:
+        week = time.time() - 7 * 86400
+        out = []
+        for p in self.shared.plugs:
+            eid = p["entity"]
+            st = self.hass.states.get(eid) if hasattr(self.hass, "states") else None
+            runs = sorted((r for r in self.shared.runs if r["plug"] == eid), key=lambda r: r["start"], reverse=True)
+            apps = []
+            for n in p["names"]:
+                key = self.shared.key(eid, n)
+                mine = [r for r in runs if r.get("name") == n]
+                apps.append({"name": n, "key": key, "kwh": self.shared.kwh(eid, n), "n": len(mine),
+                             "kwh7": round(sum(r["wh"] for r in mine if r["start"] >= week) / 1000, 3),
+                             "dash": key in self.shared.dash, "entities": self.entity_ids("sh:" + key),
+                             "running": bool(self.shared.running(eid, n))})
+            out.append({"entity": eid, "name": st.name if st else eid, "power": round(self.sub_now.get(eid, 0)),
+                        "apps": apps, "open": self.shared.open.get(eid),
+                        "runs": [{**{k: r.get(k) for k in ("id", "start", "end", "wh", "name", "guess", "conf", "user")}, "D": r["f"]["D"]}
+                                 for r in runs[:20]]})
+        return out
 
     # ------------------------------------------------------------ bilan par jour : le reste de la maison, les coûts
     async def async_lines(self):
@@ -942,6 +1009,7 @@ class Coordinator:
             pending = [gid for gid, g in self.groups.items()
                        if g["status"] == "valide" and g.get("energy_dash") and not self.entity_ids(gid)]
             pending += [c["id"] for c in self.cats if c["dash"] and not self.entity_ids("cat:" + c["id"])]
+            pending += [k for k in self.shared.dash if not self.entity_ids("sh:" + k)]
             if pending or "sensor" not in self.add_entities:
                 return
             mgr = await async_get_manager(self.hass)
@@ -958,6 +1026,12 @@ class Coordinator:
                 en = next((i for i in ids if i.endswith("_energie")), None)
                 if c["dash"] and en:
                     want[en] = (c["name"], next((i for i in ids if i.endswith("_puissance")), None))
+            for eid, n in self.shared.appliances():
+                key = self.shared.key(eid, n)
+                ids = self.entity_ids("sh:" + key)
+                en = next((i for i in ids if i.endswith("_energie")), None)
+                if key in self.shared.dash and en:
+                    want[en] = (n, next((i for i in ids if i.endswith("_puissance")), None))
             ours = lambda sid: sid.startswith("sensor.empreinte_") and sid.endswith("_energie")
             nxt = []
             for d in cur:
@@ -1852,7 +1926,7 @@ class Coordinator:
             g = self.groups.get(gid)
             if gid.startswith("cat:") and self._cat(gid[4:]).get("dash"):
                 continue
-            if gid == "lines":
+            if gid == "lines" or gid.startswith("sh:"):
                 continue
             if not g or g["status"] != "valide":
                 self.remove_entities(gid)
@@ -1867,6 +1941,8 @@ class Coordinator:
 
     def _action(self, msg):
         a = msg["action"]
+        if a.startswith("shared_"):                    # à part : pas dans la pile d'annulation des appareils de la courbe
+            return self._shared_action(msg)
         self._ranged = False                          # chaque réponse sert aussi aux utilisations passées encore incertaines
         if a == "undo":
             if not self.undo:
@@ -2202,6 +2278,7 @@ class Coordinator:
                                                     and self._owns_start(x["start"], t.get("ivs") or [[t["at"], 0]]) for t in self.tracks)],
                        "tracks": [{**{k: t.get(k) for k in ("id", "name", "at", "p", "on", "since", "on_s", "user", "planned_end", "minutes")},
                                    "used": self._used_minutes(t["name"])} for t in self.tracks],
+                       "shared": self._shared_payload(),
                        "measured": [{"entity": m, "name": (self.hass.states.get(m).name if self.hass.states.get(m) else m),
                                      "power": round(self.sub_now.get(m, 0))} for m in self.measured]},
         }
@@ -2290,11 +2367,39 @@ class Coordinator:
             self.entities[gid] = ents
             self.add_entities["binary_sensor"]([ents[0]])
             self.add_entities["sensor"](ents[1:])
+        from .sensor import SharedEnergy, SharedPower
+        from .binary_sensor import SharedRunning
+        want = set()
+        for eid, n in self.shared.appliances():
+            key = "sh:" + self.shared.key(eid, n)
+            want.add(key)
+            if key not in self.entities:
+                ents = [SharedRunning(self, eid, n), SharedPower(self, eid, n), SharedEnergy(self, eid, n)]
+                self.entities[key] = ents
+                self.add_entities["binary_sensor"]([ents[0]])
+                self.add_entities["sensor"](ents[1:])
+        self._drop_old_shared(want)
         dev_reg = dr.async_get(self.hass)
         for gid, g in self.groups.items():
             dev = self._device(gid)
             if dev and g["name"] and dev.name != g["name"]:
                 dev_reg.async_update_device(dev.id, name=g["name"])
+
+    @callback
+    def _drop_old_shared(self, want: set):
+        """Un appareil retiré d'une prise partagée (réglages) : ses capteurs disparaissent de HA."""
+        reg = er.async_get(self.hass)
+        if reg is None:
+            return
+        keep = {e.unique_id for k in want for e in self.entities.get(k, [])}
+        for ent in er.async_entries_for_config_entry(reg, self.entry.entry_id):
+            if (ent.unique_id or "").startswith(f"{DOMAIN}_sh_") and ent.unique_id not in keep:
+                reg.async_remove(ent.entity_id)
+        dev_reg = dr.async_get(self.hass)
+        for dev in dr.async_entries_for_config_entry(dev_reg, self.entry.entry_id):
+            ids = [i[1] for i in dev.identifiers if i[0] == DOMAIN]
+            if ids and ids[0].startswith("sh:") and ids[0] not in want:
+                dev_reg.async_remove_device(dev.id)
 
     @callback
     def push_entities(self):

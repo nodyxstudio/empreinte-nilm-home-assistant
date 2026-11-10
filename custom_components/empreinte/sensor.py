@@ -370,3 +370,47 @@ class Evolution(_Line):
     @property
     def native_value(self):
         return (self.coord.advice.get("comparaison") or {}).get("pct")
+
+
+class _Shared:
+    """Un appareil d'une prise partagée (lave-linge, sèche-linge…) : ses mesures viennent de la prise elle-même."""
+    _attr_should_poll = False
+    _attr_has_entity_name = True
+    _platform = "sensor"
+
+    def __init__(self, coord, plug, name, suffix):
+        self.coord, self.plug, self.app = coord, plug, name
+        self._attr_unique_id = f"{DOMAIN}_sh_{slug(plug)}_{slug(name)}_{suffix}"
+        self.entity_id = f"sensor.empreinte_prise_{slug(name)}_{suffix}"
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, "sh:" + coord.shared.key(plug, name))}, name=name,
+                                            manufacturer="Empreinte", model="Prise partagée")
+
+
+class SharedPower(_Shared, SensorEntity):
+    _attr_name = "puissance"
+    _attr_device_class = SensorDeviceClass.POWER
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = UnitOfPower.WATT
+
+    def __init__(self, coord, plug, name):
+        super().__init__(coord, plug, name, "puissance")
+
+    @property
+    def native_value(self):
+        return round(self.coord.sub_now.get(self.plug, 0)) if self.coord.shared.running(self.plug, self.app) else 0
+
+
+class SharedEnergy(_Shared, SensorEntity):
+    """Comptée à la fin de chaque programme. Peut baisser quand une correction la rend à l'autre appareil."""
+    _attr_name = "énergie"
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_state_class = SensorStateClass.TOTAL
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_suggested_display_precision = 2
+
+    def __init__(self, coord, plug, name):
+        super().__init__(coord, plug, name, "energie")
+
+    @property
+    def native_value(self):
+        return self.coord.shared.kwh(self.plug, self.app)
