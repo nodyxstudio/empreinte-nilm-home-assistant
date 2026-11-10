@@ -82,6 +82,38 @@ check("… avec le coût et la part de chacun", rows and rows[0]["eur"] == 10.0 
 check("Le frigo (estimé) est compté à part, retiré du non identifié", "fridge_kwh" in co.lines)
 fr = next((r for r in rows if r["nom"] == "Frigo (estimé)"), {})
 check("Coût sur un an : le frigo à sa consommation de fiche", fr.get("an") == 250 and fr.get("an_eur") == round(250 * 0.2))
+# « Classement : repartir de zéro » en cours d'heure : HA donne n'importe quoi pour un départ pas encore compilé,
+# le classement additionne donc lui-même les créneaux (5 min puis heures) depuis la remise à zéro.
+_S = sys.modules["homeassistant.components.recorder.statistics"]
+_old = (_S.statistic_during_period, _S.statistics_during_period)
+T_RESET = (int(__import__("time").time() // 3600) - 3) * 3600 + 1000        # 3 h moins 16 min 40 avant l'heure en cours
+H0 = (T_RESET // 3600 + 1) * 3600
+
+
+def _rows(hass, start, end, sids, period, units, types):
+    t0 = start.timestamp()
+    if period == "5minute":                       # de la remise à zéro à maintenant, 0,1 kWh par créneau de 5 min
+        ts = [t for t in range(int(t0), int(__import__("time").time()), 300)]
+        return {s: [{"start": t, "change": 0.1 if s == "sensor.pc" else 0.0} for t in ts] for s in sids}
+    if t0 == H0:                                  # heures pleines compilées : 2 h, 1,2 kWh chacune
+        return {s: [{"start": H0 + k * 3600, "change": 1.2 if s == "sensor.pc" else 0.0} for k in range(2)] for s in sids}
+    return _old[1](hass, start, end, sids, period, units, types)
+
+
+_S.statistic_during_period = lambda hass, start, end, sid, types, units: {"change": 999.0 if start.timestamp() == T_RESET else MONTH.get(sid, 0)}
+_S.statistics_during_period = _rows
+co.lines["ranking_since"], co.ranking = T_RESET, {}
+asyncio.run(co.async_lines())
+pc = next((r for r in co.ranking.get("lignes", []) if r["nom"] == "PC"), {})
+n5_before = len(range(int((T_RESET + 299) // 300 * 300), int(H0), 300))
+n5_after = len(range(int(H0 + 7200), int(__import__("time").time()), 300))
+want = round(0.1 * (n5_before + n5_after) + 2.4, 2)
+check("Repartir de zéro : le classement compte depuis ce moment-là", "depuis le" in co.ranking.get("periode", ""), f"({co.ranking.get('periode')})")
+check("… avec les vrais créneaux, pas la valeur fausse de HA", pc.get("kwh") == want, f"({pc.get('kwh')} kWh, attendu {want})")
+_S.statistic_during_period, _S.statistics_during_period = _old
+co.lines.pop("ranking_since")
+co.ranking = {}
+asyncio.run(co.async_lines())
 # Une ligne estimée (Powercalc) : retirée du non identifié, sans être dans le tableau Énergie.
 vals["sensor.lampes_energie"] = 2.0
 asyncio.run(co.async_lines())                         # première lecture de la ligne estimée

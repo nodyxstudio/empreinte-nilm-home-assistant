@@ -34,6 +34,11 @@ PROFILE_MAX_POINTS = 120
 RESEGMENT_KEY = "resegment_v7"   # à changer quand la façon de mesurer change : tout est re-mesuré
 
 
+def _ts(v) -> float:
+    """Un début de statistique HA (date ou nombre de secondes) en secondes."""
+    return v.timestamp() if hasattr(v, "timestamp") else float(v)
+
+
 def letter(n: int) -> str:
     return chr(65 + n % 26) + (str(n // 26 + 1) if n >= 26 else "")
 
@@ -658,6 +663,7 @@ class Coordinator:
         # remis à zéro pendant le mois (bouton « Repartir de zéro ») : le classement compte à partir de ce moment-là
         r0 = self.lines.get("ranking_since") or 0
         frm = dt_util.utc_from_timestamp(r0) if r0 > start.timestamp() else start
+        utc_ts = dt_util.utc_from_timestamp
         since = self.lines.get("since", {})
         first = min(since.values(), default=start.timestamp())          # début du bilan par ligne
         rec = get_instance(self.hass)
@@ -668,6 +674,26 @@ class Coordinator:
                 return max(float((r or {}).get("change") or 0), 0.0)
             except Exception:  # une statistique absente ne doit rien bloquer
                 return 0.0
+
+        async def since_frm(sid):
+            """Depuis le début du classement. Après « repartir de zéro », le départ tombe en cours d'heure : HA donne
+            alors une valeur fausse tant que ce moment n'est pas compilé ; on additionne donc nous-mêmes ses
+            créneaux (5 min jusqu'à l'heure pleine, puis les heures, puis les 5 min pas encore comptées en heures)."""
+            if frm is start:
+                return await change(sid, start)
+            t5 = utc_ts(math.ceil(frm.timestamp() / 300) * 300)
+            h0 = utc_ts(math.ceil(frm.timestamp() / 3600) * 3600)
+            try:
+                r5 = (await rec.async_add_executor_job(
+                    statistics_during_period, self.hass, t5, None, {sid}, "5minute", None, {"change"})).get(sid) or []
+                rh = (await rec.async_add_executor_job(
+                    statistics_during_period, self.hass, h0, None, {sid}, "hour", None, {"change"})).get(sid) or []
+            except Exception:  # une statistique absente ne doit rien bloquer
+                return 0.0
+            h_end = max((_ts(x["start"]) + 3600 for x in rh), default=h0.timestamp())
+            tot = sum(x.get("change") or 0 for x in rh)
+            tot += sum(x.get("change") or 0 for x in r5 if _ts(x["start"]) < h0.timestamp() or _ts(x["start"]) >= h_end)
+            return max(tot, 0.0)
 
         async def per_year(sid, t0):
             # sur un an, au rythme des 30 derniers jours (ou depuis que la ligne est suivie et a des statistiques) ;
@@ -688,20 +714,20 @@ class Coordinator:
 
         rows = []
         for sid, name in devs:
-            rows.append({"nom": name, "kwh": await change(sid, frm), "an": await per_year(sid, since.get(sid, first))})
+            rows.append({"nom": name, "kwh": await since_frm(sid), "an": await per_year(sid, since.get(sid, first))})
         if self.fridge_kwh:
-            rows.append({"nom": "Frigo (estimé)", "kwh": await change("sensor.empreinte_bilan_frigo_energie", frm),
+            rows.append({"nom": "Frigo (estimé)", "kwh": await since_frm("sensor.empreinte_bilan_frigo_energie"),
                          "an": self.fridge_kwh})
         veille = await self._veille_w(rec, statistics_during_period, now)
         if veille:
             self.lines["veille_w"] = veille
         if self.lines.get("veille_w"):
-            rows.append({"nom": VEILLE_NAME, "kwh": await change("sensor.empreinte_bilan_veille_energie", frm),
+            rows.append({"nom": VEILLE_NAME, "kwh": await since_frm("sensor.empreinte_bilan_veille_energie"),
                          "an": self.lines["veille_w"] * 8.76})
         # le non identifié sur un an : la maison moins tout le reste (les parts font bien 100 %)
         house_an = await per_year(house, first) if house else None
         rest_an = max(house_an - sum(r["an"] or 0 for r in rows), 0) if house_an is not None else None
-        rows.append({"nom": "Non identifié", "kwh": await change("sensor.empreinte_bilan_reste_energie", frm), "an": rest_an})
+        rows.append({"nom": "Non identifié", "kwh": await since_frm("sensor.empreinte_bilan_reste_energie"), "an": rest_an})
         key = "an" if house_an is not None else "kwh"
         tot = sum(r[key] or 0 for r in rows) or 1
         for r in rows:
