@@ -82,6 +82,18 @@ check("… avec le coût et la part de chacun", rows and rows[0]["eur"] == 10.0 
 check("Le frigo (estimé) est compté à part, retiré du non identifié", "fridge_kwh" in co.lines)
 fr = next((r for r in rows if r["nom"] == "Frigo (estimé)"), {})
 check("Coût sur un an : le frigo à sa consommation de fiche", fr.get("an") == 250 and fr.get("an_eur") == round(250 * 0.2))
+# « Ce que coûte chaque appareil » : chaque ligne connue sur l'heure, le jour, le mois, l'année ; et les programmes du jour
+co.shared.runs.append({"id": "p1", "plug": "sensor.prise_linge", "start": __import__("time").time() - 600, "end": __import__("time").time(),
+                       "wh": 900.0, "name": "Lave-linge", "guess": "Lave-linge", "conf": 0.9})
+co.ranking = {}
+asyncio.run(co.async_lines())
+couts = {c["nom"]: c for c in co.ranking.get("couts", [])}
+check("Coût de chaque appareil connu : heure, jour, mois, année", couts.get("PC") == {"nom": "PC", "heure": 2.4, "jour": 2.4, "mois": 2.4,
+      "annee": 2.4, "kwh_mois": 12.0}, f"({couts.get('PC')})")
+check("… seulement les appareils connus (pas le non identifié)", "Non identifié" not in couts and len(couts) >= 2, f"({list(couts)})")
+check("Le prix de chaque programme du jour (prise partagée)", co.ranking.get("utilisations", [{}])[0].get("eur") == 0.18,
+      f"({co.ranking.get('utilisations')})")
+co.shared.runs.clear()
 # « Classement : repartir de zéro » en cours d'heure : HA donne n'importe quoi pour un départ pas encore compilé,
 # le classement additionne donc lui-même les créneaux (5 min puis heures) depuis la remise à zéro.
 _S = sys.modules["homeassistant.components.recorder.statistics"]

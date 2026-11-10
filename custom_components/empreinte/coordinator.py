@@ -757,6 +757,37 @@ class Coordinator:
                         "clim_jour_kwh": round(await change(self.clim_energy, day), 1) if self.clim_energy else None,
                         "clim_mois_kwh": round(await change(self.clim_energy, start), 1) if self.clim_energy else None,
                         "prix": price}
+        # « Ce que coûte chaque appareil » : chaque ligne connue (pas le non identifié), sur la dernière heure, aujourd'hui,
+        # ce mois-ci (depuis le 1er) et cette année, au prix du kWh du tableau Énergie.
+        async def last_hour(sid):
+            t = utc_ts(math.floor((time.time() - 3600) / 300) * 300)
+            try:
+                r5 = (await rec.async_add_executor_job(
+                    statistics_during_period, self.hass, t, None, {sid}, "5minute", None, {"change"})).get(sid) or []
+            except Exception:  # une statistique absente ne doit rien bloquer
+                return 0.0
+            return max(sum(x.get("change") or 0 for x in r5), 0.0)
+
+        states = getattr(self.hass, "states", None)
+        clim_line = "sensor.empreinte_bilan_clim_energie"       # la clim lissée (son compteur avance par paliers)
+        couts = []
+        for sid, name in devs:
+            src = clim_line if sid == self.clim_energy and states and states.get(clim_line) else sid
+            k = {"heure": await last_hour(src), "jour": await change(src, day), "mois": await change(src, start),
+                 "annee": await change(src, jan1)}
+            k["mois"] = max(k["mois"], k["jour"])          # une petite correction négative d'avant ne fait pas
+            k["annee"] = max(k["annee"], k["mois"])        # une année plus petite que son mois
+            couts.append({"nom": name, **{p: round(v * price, 2) for p, v in k.items()}, "kwh_mois": round(k["mois"], 2)})
+        couts.sort(key=lambda c: -c["mois"])
+        # les programmes d'aujourd'hui sur les prises partagées (lave-linge, sèche-linge…) : le prix de chacun
+        uses = []
+        for r in sorted(self.shared.runs, key=lambda r: r["start"]):
+            nom = r.get("name") or (r.get("guess") if (r.get("conf") or 0) >= 0.75 else None)
+            if r["start"] >= day.timestamp() and nom:
+                loc = dt_util.as_local(dt_util.utc_from_timestamp(r["start"]))
+                uses.append({"nom": nom, "debut": f"{loc.hour} h {loc.minute:02d}", "kwh": round(r["wh"] / 1000, 2),
+                             "eur": round(r["wh"] / 1000 * price, 2)})
+        self.ranking["couts"], self.ranking["utilisations"] = couts, uses
 
     async def _async_advice(self, devs, price, house):
         """Les économies possibles, calculées sur la vraie consommation de la maison, et ce mois comparé au précédent.

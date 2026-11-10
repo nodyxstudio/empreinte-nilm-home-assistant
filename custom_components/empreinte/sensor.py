@@ -185,7 +185,8 @@ class Ranking(_Line):
         return {"periode": self.coord.ranking.get("periode"), "lignes": self.coord.ranking.get("lignes", []),
                 "an_eur": self.coord.ranking.get("an_eur"), "annee_kwh": self.coord.ranking.get("annee_kwh"),
                 "mois_kwh": self.coord.ranking.get("mois_kwh"), "jour_kwh": self.coord.ranking.get("jour_kwh"),
-                "hier_kwh": self.coord.ranking.get("hier_kwh")}
+                "hier_kwh": self.coord.ranking.get("hier_kwh"), "prix": self.coord.ranking.get("prix"),
+                "couts": self.coord.ranking.get("couts", []), "utilisations": self.coord.ranking.get("utilisations", [])}
 
 
 
