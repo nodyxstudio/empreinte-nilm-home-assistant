@@ -1,5 +1,9 @@
 # Nouveautés
 
+## 1.1.1
+
+- Correction : après un changement des prises mesurées (ou de la façon de mesurer), Empreinte refait toute l'analyse. Les utilisations déjà envoyées au tableau Énergie (catégories, appareils validés) étaient alors comptées une seconde fois. Elles gardent maintenant ce qui avait été compté.
+
 ## 1.1.0
 
 - **Prises partagées** : une prise connectée pour plusieurs appareils jamais allumés ensemble (lave-linge et sèche-linge…). Empreinte découpe chaque programme sur la courbe de la prise et reconnaît lequel a tourné ; chacun a ses capteurs (en marche, puissance, énergie) et sa ligne possible dans le tableau Énergie. Un clic corrige, et il apprend.

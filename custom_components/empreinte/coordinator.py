@@ -185,6 +185,7 @@ class Coordinator:
         self.open_start = None
         self.learned_labels: dict[str, str] = {}
         self._mem: dict = {}
+        self._renum: list = []               # analyse refaite : anciens numéros à reporter (voir _renumber)
         self._first = None
 
     # ------------------------------------------------------------ démarrage
@@ -249,6 +250,7 @@ class Coordinator:
         self.advice: dict = {}
         if not self.store.get_meta(RESEGMENT_KEY):
             self._resegment()
+        self._renum = self.store.get_meta("renumber", [])
         if not self.store.get_meta("split_v1"):
             self._split_old()
         seen, dups = set(), []
@@ -1095,6 +1097,7 @@ class Coordinator:
         self._dedupe_overlaps([e for e in self.evs if self.rows[e.id]["end"] >= self.processed_until - 7 * 3600])
         if new:
             self._apply_relabel(new)
+        again = self._renumber(new) if self._renum else set()
         if new or not self.cents or not self._ranged:       # aussi au démarrage : « probable » n'est pas enregistré
             self._ranged = True
             self._cluster()
@@ -1102,7 +1105,8 @@ class Coordinator:
             self._recompute()
         if new:
             for ev in new:
-                self._add_energy(ev.gid, ev.id, ev.f["wh"] / 1000)
+                if ev.id not in again:      # une ancienne utilisation ré-analysée : déjà comptée (ou pas) sous son ancien numéro
+                    self._add_energy(ev.gid, ev.id, ev.f["wh"] / 1000)
         self._save()
         self._cats_update()
         if datetime.now().hour == 3:
@@ -1346,8 +1350,9 @@ class Coordinator:
         (10 min) : sinon on réessaie à la minute suivante."""
         alive = {e.id: e for e in self.evs}
         changed = False
+        waiting = {old for old, _ in self._renum}       # analyse refaite en cours : pas encore son nouveau numéro
         for x in self.energy_log:
-            if x["removed"] or x.get("checked"):
+            if x["removed"] or x.get("checked") or x["eid"] in waiting:
                 continue
             kind, tid = x["target"]
             e = alive.get(x["eid"])
@@ -1639,6 +1644,8 @@ class Coordinator:
                     "hint": self.hints.get(r["id"])} for r in rows if r["pinned"] or r["id"] in self.hints]
         relabel = [x | {"pinned": any(r["pinned"] and r["start"] == x["start"] for r in rows)} for x in relabel]
         kept = {x["gid"] for x in relabel if x["gid"] and x["pinned"]}
+        # ce qui a déjà été compté dans le tableau Énergie suivra chaque utilisation sous son nouveau numéro (_renumber)
+        self.store.set_meta("renumber", self.store.get_meta("renumber", []) + [[r["id"], r["start"]] for r in rows])
         self.store.delete_events([r["id"] for r in rows])
         self.groups = {gid: g for gid, g in self.groups.items() if gid in kept or g["status"] == "valide"}
         self.hints = {}
@@ -1651,6 +1658,43 @@ class Coordinator:
         self.store.set_meta("processed_until", self.processed_until)
         _LOGGER.info("Empreinte : analyse refaite depuis le début (%s utilisations, %s réponses à reporter)",
                      len(rows), len(relabel))
+
+    def _renumber(self, new) -> set:
+        """Après une analyse refaite, chaque utilisation est enregistrée sous un nouveau numéro. Ce qui avait déjà été
+        compté pour l'ancienne (catégories, appareils, journal du tableau Énergie) passe à la nouvelle du même moment :
+        sinon tout l'historique serait compté une seconde fois. Une ancienne utilisation qui n'a plus d'équivalente
+        garde ce qui a été compté (rien n'est retiré du tableau Énergie)."""
+        mp, wait, lost = {}, [], set()
+        taken = set()
+        for old, start in self._renum:
+            match = min((e for e in new if e.id not in taken), key=lambda e: abs(self.rows[e.id]["start"] - start), default=None)
+            if match and abs(self.rows[match.id]["start"] - start) <= 90:
+                mp[old] = match.id
+                taken.add(match.id)
+            elif start > self.processed_until - 2 * 3600:
+                wait.append([old, start])               # l'analyse n'est pas encore arrivée à ce moment-là
+            else:
+                lost.add(old)
+        if not mp and not lost:
+            return set()
+        for owner in list(self.cats) + list(self.groups.values()):
+            cnt = owner.get("counted")
+            if not cnt:
+                continue
+            for old, nid in mp.items():
+                if str(old) in cnt:
+                    cnt[str(nid)] = max(cnt.pop(str(old)), cnt.get(str(nid), 0))
+        for x in self.energy_log:
+            if x["eid"] in mp:
+                x["eid"] = mp[x["eid"]]
+            elif x["eid"] in lost:
+                x["checked"] = True                     # plus d'utilisation à corriger : on n'y touche plus
+        self._renum = wait
+        self.store.set_meta("renumber", wait)
+        self.store.set_meta("categories", self.cats)
+        self.store.set_meta("energy_log", self.energy_log)
+        self._save()
+        return set(mp.values())
 
     def _apply_relabel(self, new):
         """Reporte les réponses notées avant une nouvelle mesure sur les utilisations correspondantes."""
