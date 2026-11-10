@@ -110,6 +110,8 @@ n5_after = len(range(int(H0 + 7200), int(__import__("time").time()), 300))
 want = round(0.1 * (n5_before + n5_after) + 2.4, 2)
 check("Repartir de zéro : le classement compte depuis ce moment-là", "depuis le" in co.ranking.get("periode", ""), f"({co.ranking.get('periode')})")
 check("… avec les vrais créneaux, pas la valeur fausse de HA", pc.get("kwh") == want, f"({pc.get('kwh')} kWh, attendu {want})")
+check("… et les parts lues sur ce qui a été mesuré depuis (pas sur l'ancien rythme d'un an)", pc.get("pct") == 100,
+      f"({[(r['nom'], r['pct']) for r in co.ranking.get('lignes', [])]})")
 _S.statistic_during_period, _S.statistics_during_period = _old
 co.lines.pop("ranking_since")
 co.ranking = {}

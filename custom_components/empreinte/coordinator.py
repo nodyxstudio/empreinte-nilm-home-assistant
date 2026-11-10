@@ -728,7 +728,9 @@ class Coordinator:
         house_an = await per_year(house, first) if house else None
         rest_an = max(house_an - sum(r["an"] or 0 for r in rows), 0) if house_an is not None else None
         rows.append({"nom": "Non identifié", "kwh": await since_frm("sensor.empreinte_bilan_reste_energie"), "an": rest_an})
-        key = "an" if house_an is not None else "kwh"
+        # après « repartir de zéro », les parts se lisent sur ce qui a été mesuré depuis (les nouvelles lignes n'ont pas
+        # encore de rythme sur un an, et le non identifié garderait l'ancien, celui d'avant ces lignes)
+        key = "an" if house_an is not None and frm is start else "kwh"
         tot = sum(r[key] or 0 for r in rows) or 1
         for r in rows:
             r["pct"] = round((r[key] or 0) / tot * 100)
