@@ -1078,6 +1078,25 @@ class Coordinator:
         if new:
             self.entities.setdefault("lines", []).extend(new)
             self.add_entities["sensor"](new)
+        self._drop_old_lines()
+
+    @callback
+    def _drop_old_lines(self):
+        """Une ligne du bilan qui n'existe plus (estimation retirée des réglages, frigo plus estimé, ligne sortie du
+        tableau Énergie) : son capteur, devenu « indisponible » pour toujours, disparaît de HA. Son historique reste
+        dans les statistiques. Seulement quand toutes les lignes actuelles sont dans HA (rien d'actuel n'est retiré)."""
+        lines = self.entities.get("lines", [])
+        if not lines or any(not getattr(e, "hass", None) for e in lines):
+            return
+        reg = er.async_get(self.hass)
+        if reg is None:
+            return
+        keep = {e.unique_id for e in lines}
+        for ent in list(er.async_entries_for_config_entry(reg, self.entry.entry_id)):
+            uid = ent.unique_id or ""
+            if ent.entity_id.startswith("sensor.") and uid.startswith(f"{DOMAIN}_bilan_") and uid not in keep:
+                reg.async_remove(ent.entity_id)
+                _LOGGER.info("Empreinte : %s retiré (cette ligne n'existe plus)", ent.entity_id)
 
     async def async_sync_energy(self):
         """Le tableau Énergie contient exactement les appareils Empreinte que l'utilisateur y a ajoutés (bouton
