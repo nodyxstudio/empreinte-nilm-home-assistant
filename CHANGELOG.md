@@ -1,5 +1,9 @@
 # Nouveautés
 
+## 1.1.2
+
+- Bouton **Classement : repartir de zéro** (appareil « Bilan par jour ») : après un changement (nouvelles prises, nouveaux appareils…), « Qui consomme le plus » compte à partir de ce moment-là. Le mois suivant, il reprend depuis le 1er.
+
 ## 1.1.1
 
 - Correction : après un changement des prises mesurées (ou de la façon de mesurer), Empreinte refait toute l'analyse. Les utilisations déjà envoyées au tableau Énergie (catégories, appareils validés) étaient alors comptées une seconde fois. Elles gardent maintenant ce qui avait été compté.

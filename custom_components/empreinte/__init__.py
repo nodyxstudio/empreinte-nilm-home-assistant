@@ -15,7 +15,7 @@ from homeassistant.core import HomeAssistant
 from .const import DATA_DIR, DOMAIN, PANEL_URL, STATIC_URL, VERSION
 from .coordinator import Coordinator
 
-PLATFORMS = ["binary_sensor", "sensor"]
+PLATFORMS = ["binary_sensor", "button", "sensor"]
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -104,7 +104,7 @@ async def ws_day(hass, connection, msg):
 
 @websocket_api.websocket_command({
     vol.Required("type"): "empreinte/action",
-    vol.Required("action"): vol.In(["rename", "move", "confirm", "label", "maybe", "unmaybe", "doubt", "cancel_pending", "track_stop", "track_duration", "track_cancel", "label_now", "label_at", "energy_add", "energy_remove", "energy_undo", "energy_redo", "cat_create", "cat_rename", "cat_delete", "cat_set", "cat_dash", "merge", "split", "validate", "delete", "undo", "shared_label", "shared_dash"]),
+    vol.Required("action"): vol.In(["rename", "move", "confirm", "label", "maybe", "unmaybe", "doubt", "cancel_pending", "track_stop", "track_duration", "track_cancel", "label_now", "label_at", "energy_add", "energy_remove", "energy_undo", "energy_redo", "cat_create", "cat_rename", "cat_delete", "cat_set", "cat_dash", "merge", "split", "validate", "delete", "undo", "shared_label", "shared_dash", "ranking_reset"]),
     vol.Optional("gid"): str, vol.Optional("name"): str, vol.Optional("ids"): [str],
     vol.Optional("target"): vol.Any(str, None), vol.Optional("src"): str, vol.Optional("dst"): str,
     vol.Optional("thr"): vol.Coerce(float), vol.Optional("maybe"): bool, vol.Optional("on"): bool, vol.Optional("cid"): vol.Any(str, None), vol.Optional("lid"): str,

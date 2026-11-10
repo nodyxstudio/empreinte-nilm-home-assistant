@@ -1,7 +1,7 @@
 """Constantes d'Empreinte."""
 
 DOMAIN = "empreinte"
-VERSION = "1.1.1"
+VERSION = "1.1.2"
 CONF_POWER_ENTITY = "power_entity"        # la puissance de toute la maison (W) : le seul réglage obligatoire
 # Réglages facultatifs (modifiables à tout moment : Paramètres → Appareils et services → Empreinte → Configurer)
 CONF_MEASURED = "measured"                # prises connectées qui mesurent déjà un appareil (retirées de l'analyse)

@@ -28,6 +28,7 @@ jobs:
           python tests/test_partagee.py
           python tests/test_fil_principal.py
           python tests/test_reanalyse.py
+          python tests/test_classement_zero.py
           node tests/test_habits.mjs
       - name: Suivi d'appareils
         run: python tests/test_tracking.py

@@ -655,6 +655,9 @@ class Coordinator:
             return
         now = dt_util.now()
         start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        # remis à zéro pendant le mois (bouton « Repartir de zéro ») : le classement compte à partir de ce moment-là
+        r0 = self.lines.get("ranking_since") or 0
+        frm = dt_util.utc_from_timestamp(r0) if r0 > start.timestamp() else start
         since = self.lines.get("since", {})
         first = min(since.values(), default=start.timestamp())          # début du bilan par ligne
         rec = get_instance(self.hass)
@@ -685,20 +688,20 @@ class Coordinator:
 
         rows = []
         for sid, name in devs:
-            rows.append({"nom": name, "kwh": await change(sid, start), "an": await per_year(sid, since.get(sid, first))})
+            rows.append({"nom": name, "kwh": await change(sid, frm), "an": await per_year(sid, since.get(sid, first))})
         if self.fridge_kwh:
-            rows.append({"nom": "Frigo (estimé)", "kwh": await change("sensor.empreinte_bilan_frigo_energie", start),
+            rows.append({"nom": "Frigo (estimé)", "kwh": await change("sensor.empreinte_bilan_frigo_energie", frm),
                          "an": self.fridge_kwh})
         veille = await self._veille_w(rec, statistics_during_period, now)
         if veille:
             self.lines["veille_w"] = veille
         if self.lines.get("veille_w"):
-            rows.append({"nom": VEILLE_NAME, "kwh": await change("sensor.empreinte_bilan_veille_energie", start),
+            rows.append({"nom": VEILLE_NAME, "kwh": await change("sensor.empreinte_bilan_veille_energie", frm),
                          "an": self.lines["veille_w"] * 8.76})
         # le non identifié sur un an : la maison moins tout le reste (les parts font bien 100 %)
         house_an = await per_year(house, first) if house else None
         rest_an = max(house_an - sum(r["an"] or 0 for r in rows), 0) if house_an is not None else None
-        rows.append({"nom": "Non identifié", "kwh": await change("sensor.empreinte_bilan_reste_energie", start), "an": rest_an})
+        rows.append({"nom": "Non identifié", "kwh": await change("sensor.empreinte_bilan_reste_energie", frm), "an": rest_an})
         key = "an" if house_an is not None else "kwh"
         tot = sum(r[key] or 0 for r in rows) or 1
         for r in rows:
@@ -712,7 +715,11 @@ class Coordinator:
                 "novembre", "décembre"][now.month - 1]
         jan1 = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
         day = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        self.ranking = {"t": time.time(), "periode": f"{mois} {now.year}", "lignes": rows,
+        periode = f"{mois} {now.year}"
+        if frm is not start:
+            loc = dt_util.as_local(frm)
+            periode = f"depuis le {loc.day} {mois} à {loc.hour} h {loc.minute:02d}"
+        self.ranking = {"t": time.time(), "periode": periode, "depuis": frm.timestamp(), "lignes": rows,
                         "an_eur": round(house_an * price) if house_an is not None else None,
                         # toute la maison, lue dans les mêmes statistiques que les graphiques, pour l'onglet Énergie
                         "annee_kwh": round(await change(house, jan1), 1) if house else None,
@@ -1999,6 +2006,11 @@ class Coordinator:
         a = msg["action"]
         if a.startswith("shared_"):                    # à part : pas dans la pile d'annulation des appareils de la courbe
             return self._shared_action(msg)
+        if a == "ranking_reset":                       # « Qui consomme le plus » repart de zéro, à partir de maintenant
+            self.lines["ranking_since"] = time.time()
+            self.ranking = {}
+            self.store.set_meta("lines", self.lines)
+            return
         self._ranged = False                          # chaque réponse sert aussi aux utilisations passées encore incertaines
         if a == "undo":
             if not self.undo:
