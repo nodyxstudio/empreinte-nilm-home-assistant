@@ -4,6 +4,8 @@
 
 - **Prises partagées** : une prise connectée pour plusieurs appareils jamais allumés ensemble (lave-linge et sèche-linge…). Empreinte découpe chaque programme sur la courbe de la prise et reconnaît lequel a tourné ; chacun a ses capteurs (en marche, puissance, énergie) et sa ligne possible dans le tableau Énergie. Un clic corrige, et il apprend.
 - Le bouton **Configurer** ouvre un menu : Réglages, ou Prises partagées.
+- Le panneau ne lit plus la base de données sur le fil principal de Home Assistant : son actualisation ne peut plus ralentir HA (surtout sur carte SD).
+- Installation : chercher Empreinte directement dans HACS.
 
 ## 1.0.1
 

@@ -74,10 +74,12 @@ Rien n'est figé : un appareil ajouté se **renomme**, se **supprime**, se **fus
 
 ### Avec HACS (recommandé)
 
-1. Cliquez sur le bouton **« Ouvrir dans HACS »** en haut de cette page, ou, dans HACS, ⋮ → **Dépôts personnalisés** → ajoutez `https://github.com/nodyxstudio/empreinte-nilm-home-assistant`, catégorie **Intégration**.
-2. Installez **Empreinte**, puis **redémarrez Home Assistant**.
+1. Dans **HACS**, cherchez **Empreinte**, puis **Télécharger**. (Le bouton **« Ouvrir dans HACS »** en haut de cette page y mène directement.)
+2. **Redémarrez Home Assistant**.
 3. [![Ajouter l'intégration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=empreinte), ou **Paramètres → Appareils et services → Ajouter une intégration → Empreinte**.
 4. Choisissez le capteur de **puissance de la maison** (en W ou en VA). Empreinte le devine souvent tout seul.
+
+<sub>Empreinte n'apparaît pas encore dans la recherche de HACS ? Ajoutez-le à la main : ⋮ → **Dépôts personnalisés** → `https://github.com/nodyxstudio/empreinte-nilm-home-assistant`, catégorie **Intégration**.</sub>
 
 ### À la main
 

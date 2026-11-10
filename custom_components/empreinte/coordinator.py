@@ -184,6 +184,7 @@ class Coordinator:
         self.doubts: set[int] = set()        # « pas sûr » : gardées mais pas utilisées pour apprendre
         self.open_start = None
         self.learned_labels: dict[str, str] = {}
+        self._mem: dict = {}
         self._first = None
 
     # ------------------------------------------------------------ démarrage
@@ -217,6 +218,15 @@ class Coordinator:
                 await self.hass.async_add_executor_job(self.store.add_samples, buf)
             await self.hass.async_add_executor_job(self.store.close)
 
+    def _meta(self, k, default=None):
+        """Une valeur gardée en mémoire (voir _load) : aucune lecture de la base."""
+        v = self._mem.get(k)
+        return copy.deepcopy(v) if v is not None else default
+
+    def _set_meta(self, k, v):
+        self._mem[k] = copy.deepcopy(v)
+        self.store.set_meta(k, v)
+
     def _load(self):
         self.groups = {g["id"]: g for g in self.store.get_meta("groups", [])}
         self.processed_until = self.store.get_meta("processed_until", 0.0)
@@ -228,6 +238,8 @@ class Coordinator:
         self.cats = self.store.get_meta("categories", None) or [dict(c) for c in DEFAULT_CATS]
         self.energy_log = self.store.get_meta("energy_log", [])
         self.lines = self.store.get_meta("lines", None) or {"last": {}, "kwh": {}, "eur": {}, "names": {}}
+        # lues par l'affichage (sur le fil principal de HA) : gardées en mémoire, jamais relues dans la base à ce moment-là
+        self._mem = {k: self.store.get_meta(k, None) for k in ('verdicts', 'program_minutes', 'program_history', 'tracks_done')}
         self.shared = SharedPlugs(self.shared_cfg, self.store.get_meta("shared", None))
         self._line_adjust: dict = {}
         self._ranged = False
@@ -1138,9 +1150,9 @@ class Coordinator:
 
     def _used_minutes(self, name):
         """Durées déjà choisies et durées réellement mesurées pour cet appareil (pour les proposer)."""
-        chosen = self.store.get_meta("program_minutes", {}).get((name or "").lower(), [])
+        chosen = self._meta("program_minutes", {}).get((name or "").lower(), [])
         chosen = chosen if isinstance(chosen, list) else [chosen]
-        seen = [h["minutes"] for h in reversed(self.store.get_meta("program_history", {}).get((name or "").lower(), []))]
+        seen = [h["minutes"] for h in reversed(self._meta("program_history", {}).get((name or "").lower(), []))]
         out = []
         for m in chosen + [round(x / 5) * 5 for x in seen]:
             if m and m not in out:
@@ -1198,7 +1210,7 @@ class Coordinator:
                         abs(x["start"] - t.get("since", 0)) <= 60 for t in self.tracks)
             # déjà suivi puis terminé (« C'est fini », coupure) : ce démarrage-là ne repart pas en suivi
             taken = taken or any(d["at"] - 120 <= x["start"] <= d["end"] + 60
-                                 for d in self.store.get_meta("tracks_done", []))
+                                 for d in self._meta("tracks_done", []))
             if close and same_shape and not taken:
                 self._start_track(g["name"], x["start"], x["p"], user=False)
 
@@ -1473,9 +1485,9 @@ class Coordinator:
     def _stopped(self, tr, end):
         """Garde en mémoire un suivi terminé : le même démarrage ne relance pas un suivi automatique
         (après « C'est fini », l'appareil ne doit plus être compté, même si un autre tourne encore)."""
-        done = [d for d in self.store.get_meta("tracks_done", []) if d["end"] > time.time() - 86400]
+        done = [d for d in self._meta("tracks_done", []) if d["end"] > time.time() - 86400]
         done.append({"name": tr["name"], "at": tr["at"], "end": end, "p": tr["p"]})
-        self.store.set_meta("tracks_done", done[-30:])
+        self._set_meta("tracks_done", done[-30:])
         gid = next((g for g, x in self.groups.items() if x.get("name") == tr["name"]), None)
         if gid and gid in self.live.running:
             del self.live.running[gid]       # le capteur « en marche » s'éteint aussi
@@ -1545,12 +1557,12 @@ class Coordinator:
             ev.pinned = False          # trouvé tout seul : l'utilisateur peut encore corriger
         self._add_energy(ev.gid, eid, f["wh"] / 1000)
         if not cut:                    # un programme coupé ne sert pas à proposer des durées
-            hist = self.store.get_meta("program_history", {})
+            hist = self._meta("program_history", {})
             hist.setdefault(tr["name"].lower(), []).append({
                 "start": round(start), "minutes": round((end - start) / 60), "chauffes": len(ivs),
                 "chauffe_min": round(sum(b - a for a, b in ivs) / 60), "p": tr["p"], "prevue": tr.get("minutes")})
             hist[tr["name"].lower()] = hist[tr["name"].lower()][-50:]
-            self.store.set_meta("program_history", hist)
+            self._set_meta("program_history", hist)
         # ses propres étiquettes en attente sont réglées ; celles d'un autre appareil lancé juste après restent
         self.pending = [p for p in self.pending if not (p.get("at") and abs(p["at"] - tr["at"]) <= 120 and p["name"] == tr["name"])]
         self.store.set_meta("pending", self.pending)
@@ -2005,11 +2017,11 @@ class Coordinator:
                     t["planned_end"] = time.time() + int(msg["minutes"]) * 60
                     total = round((t["planned_end"] - t["at"]) / 60)
                     t["minutes"] = total
-                    progs = self.store.get_meta("program_minutes", {})
+                    progs = self._meta("program_minutes", {})
                     old = progs.get(t["name"].lower())
                     used = [m for m in old if abs(m - total) > 5] if isinstance(old, list) else []
                     progs[t["name"].lower()] = ([total] + used)[:5]
-                    self.store.set_meta("program_minutes", progs)
+                    self._set_meta("program_minutes", progs)
             self.store.set_meta("tracks", self.tracks)
         elif a == "track_cancel":
             self.tracks = [t for t in self.tracks if t["id"] != msg["tid"]]
@@ -2128,9 +2140,9 @@ class Coordinator:
         if e.pinned or not old:
             return
         new = self.groups.get(new_gid, {}).get("name") if new_gid else None
-        v = self.store.get_meta("verdicts", [])
+        v = self._meta("verdicts", [])
         v.append({"t": time.time(), "start": self.rows[e.id]["start"], "auto": old, "user": new, "ok": new_gid == e.gid})
-        self.store.set_meta("verdicts", [x for x in v if x["t"] > time.time() - 90 * 86400][-1000:])
+        self._set_meta("verdicts", [x for x in v if x["t"] > time.time() - 90 * 86400][-1000:])
 
     def _dedupe_near(self, ids):
         """Après une réponse de l'utilisateur : la protection anti-doublon sur les utilisations de la même journée."""
@@ -2294,7 +2306,7 @@ class Coordinator:
 
     def _verdict_summary(self) -> dict:
         """Fiabilité mesurée sur les 30 derniers jours : rangements automatiques que tu as confirmés ou corrigés."""
-        v = [x for x in self.store.get_meta("verdicts", []) if x["t"] > time.time() - 30 * 86400]
+        v = [x for x in self._meta("verdicts", []) if x["t"] > time.time() - 30 * 86400]
         wrong = [x for x in v if not x["ok"]]
         return {"n": len(v), "ok": len(v) - len(wrong),
                 "errors": [{"start": x["start"], "auto": x["auto"], "user": x["user"]} for x in wrong[-10:]]}

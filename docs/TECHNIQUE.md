@@ -54,6 +54,7 @@ python tests/test_bilan.py       # reste de la maison et coût par ligne (graphi
 python tests/test_clim.py        # clim en marche et faux démarrages en direct
 python tests/test_desinstallation.py  # supprimer l'intégration efface tout ce qu'elle a ajouté, et rien d'autre
 python tests/test_partagee.py   # prise partagée : programmes découpés, lave-linge ou sèche-linge, réponses apprises
+python tests/test_fil_principal.py  # rien ne lit la base de données sur le fil principal de Home Assistant
 python tests/test_conseils.py    # économies possibles, programmes du lave-vaisselle comptés une fois
 ```
 

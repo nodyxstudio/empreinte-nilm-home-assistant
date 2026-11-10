@@ -60,10 +60,12 @@ Nothing is set in stone: an appliance you added can be **renamed**, **deleted**,
 
 ### With HACS (recommended)
 
-1. Click **"Open in HACS"** above, or in HACS: ⋮ → **Custom repositories** → add `https://github.com/nodyxstudio/empreinte-nilm-home-assistant`, category **Integration**.
-2. Install **Empreinte**, then **restart Home Assistant**.
+1. In **HACS**, search for **Empreinte**, then **Download**. (The **"Open in HACS"** button above takes you straight there.)
+2. **Restart Home Assistant**.
 3. [![Add integration](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=empreinte), or **Settings → Devices & services → Add integration → Empreinte**.
 4. Pick the **whole-house power** sensor (W or VA). Empreinte usually guesses it for you.
+
+<sub>Empreinte not in the HACS search yet? Add it by hand: ⋮ → **Custom repositories** → `https://github.com/nodyxstudio/empreinte-nilm-home-assistant`, category **Integration**.</sub>
 
 ### Manually
 

@@ -25,10 +25,10 @@ Pour vérifier : **Outils de développement → États**, cherchez le capteur. S
 
 **Avec HACS** :
 
-1. Ouvrez HACS, puis ⋮ en haut à droite → **Dépôts personnalisés**.
-2. Collez `https://github.com/nodyxstudio/empreinte-nilm-home-assistant`, choisissez **Intégration**, puis **Ajouter**.
-3. Cherchez **Empreinte**, puis **Télécharger**.
-4. **Redémarrez Home Assistant** (Paramètres → Système → ⏻ → Redémarrer).
+1. Ouvrez HACS et cherchez **Empreinte**, puis **Télécharger**.
+2. **Redémarrez Home Assistant** (Paramètres → Système → ⏻ → Redémarrer).
+
+S'il n'apparaît pas encore dans la recherche : ⋮ en haut à droite → **Dépôts personnalisés**, collez `https://github.com/nodyxstudio/empreinte-nilm-home-assistant`, choisissez **Intégration**, puis **Ajouter**, et recommencez l'étape 1.
 
 **Sans HACS** : téléchargez `empreinte.zip` dans la [dernière version](https://github.com/nodyxstudio/empreinte-nilm-home-assistant/releases/latest), dézippez-le dans `config/custom_components/empreinte/` (avec le module *File editor* ou *Samba*), puis redémarrez.
 
