@@ -102,6 +102,8 @@ def features(prof: list[int]) -> dict:
         prev = i
     low = [v for v in p if ON_W <= v < HEAT_W]
     mid = [v for v in p if 300 <= v < HEAT_W]
+    # un lave-linge s'arrête sans cesse (le tambour tourne, s'arrête, repart) ; un sèche-linge tourne sans arrêt
+    pause = sum(1 for v in p if v < ON_W)
     return {
         "D": n * STEP,
         "wh": round(sum(p) * STEP / 3600, 1),
@@ -110,6 +112,7 @@ def features(prof: list[int]) -> dict:
         "blocks": blocks,
         "low": round(sum(low) / len(low)) if low else 0,
         "mid": round(len(mid) / n, 3),
+        "pause": round(pause / n, 3),
         "peak": max(p) if p else 0,
     }
 
@@ -127,14 +130,16 @@ def prior(kind: str, f: dict) -> float:
     """Ressemblance générale d'un programme avec un type d'appareil (0 à 1)."""
     mins = f["D"] / 60
     if kind == "lave_linge":
-        # une chauffe au début (ou aucune à froid), puis le moteur : pas d'énergie en continu
-        s = _soft(mins, 25, 240, 30) * _soft(f["heat"], 0, 0.35, 0.1) * _soft(f["mid"], 0, 0.45, 0.15)
+        # il tourne d'abord sans chauffer, chauffe l'eau (ou pas, à froid), puis le moteur : pas d'énergie en continu
+        s = _soft(mins, 25, 240, 30) * _soft(f["heat"], 0, 0.45, 0.1) * _soft(f["mid"], 0, 0.45, 0.15)
         if f["heat_pos"] is not None:
-            s *= _soft(f["heat_pos"], 0, 0.45, 0.15)
+            s *= _soft(f["heat_pos"], 0, 0.6, 0.15)
         return s * _soft(f["blocks"], 0, 2, 1)
     if kind == "seche_linge":
         mins_ok = _soft(mins, 30, 300, 40)
-        resist = _soft(f["heat"], 0.4, 1, 0.15) * (_soft(f["heat_pos"], 0.3, 0.7, 0.15) if f["heat_pos"] is not None else 0)
+        # résistance : elle chauffe presque tout le temps, dès le début, et le tambour ne s'arrête pas
+        resist = (_soft(f["heat"], 0.5, 1, 0.12) * (_soft(f["heat_pos"], 0.3, 0.7, 0.15) if f["heat_pos"] is not None else 0)
+                  * _soft(f.get("pause", 0), 0, 0.05, 0.04))
         pac = _soft(f["mid"], 0.55, 1, 0.15) * _soft(f["heat"], 0, 0.15, 0.1)        # pompe à chaleur : ~600 W stables
         return mins_ok * max(resist, pac)
     if kind == "lave_vaisselle":
@@ -144,7 +149,7 @@ def prior(kind: str, f: dict) -> float:
 
 def _vec(f):
     return (math.log(max(f["D"], 60)), math.log(max(f["wh"], 1)), f["heat"] * 3, (f["heat_pos"] if f["heat_pos"] is not None else 0.5) * 2,
-            math.log(max(f["low"], 1)), min(f["blocks"], 6) / 2, f["mid"] * 3)
+            math.log(max(f["low"], 1)), min(f["blocks"], 6) / 2, f["mid"] * 3, f.get("pause", 0) * 3)
 
 
 def _dist(a, b):

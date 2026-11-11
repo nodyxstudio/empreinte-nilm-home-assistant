@@ -191,6 +191,7 @@ class Coordinator:
         self.learned_labels: dict[str, str] = {}
         self._mem: dict = {}
         self._renum: list = []               # analyse refaite : anciens numéros à reporter (voir _renumber)
+        self._sub_since = 0.0                # dernier changement des prises mesurées (les veilles se remesurent après)
         self._first = None
 
     # ------------------------------------------------------------ démarrage
@@ -256,6 +257,7 @@ class Coordinator:
         if not self.store.get_meta(RESEGMENT_KEY):
             self._resegment()
         self._renum = self.store.get_meta("renumber", [])
+        self._sub_since = self.store.get_meta("sub_since", 0) or self._sub_since
         if not self.store.get_meta("split_v1"):
             self._split_old()
         seen, dups = set(), []
@@ -407,6 +409,8 @@ class Coordinator:
             subs = await self._sub_at(times, dt_util.utc_from_timestamp(times[0] - 1))
             await self.hass.async_add_executor_job(self.store.set_sub, list(zip(times, subs)))
         await self.hass.async_add_executor_job(self.store.set_meta, "sub_for", sorted(self.measured))
+        await self.hass.async_add_executor_job(self.store.set_meta, "sub_since", time.time())
+        self._sub_since = time.time()
         await self.hass.async_add_executor_job(self.store.set_meta, RESEGMENT_KEY, False)
         _LOGGER.info("Empreinte : %s points complétés avec les prises mesurées", len(times))
 
@@ -954,8 +958,13 @@ class Coordinator:
         """Ce qui reste allumé en permanence (W) : le plus bas du non identifié entre 1 h et 5 h, sur les 7 dernières
         nuits (veilles et comptées déjà à part ajoutées : ce chiffre ne doit pas se mesurer lui-même)."""
         ids = {"sensor.empreinte_bilan_reste_energie", "sensor.empreinte_bilan_veille_energie"}
+        # après un changement des prises mesurées (ou « repartir de zéro »), les nuits d'avant ne disent plus rien
+        # de ce qui reste allumé : seules les nuits suivantes comptent, et une seule suffit
+        week = now.timestamp() - 7 * 86400
+        since = max(self._sub_since or 0, self.lines.get("ranking_since") or 0)
+        frm = max(week, since)
         try:
-            r = await rec.async_add_executor_job(stats, self.hass, dt_util.utc_from_timestamp(now.timestamp() - 7 * 86400),
+            r = await rec.async_add_executor_job(stats, self.hass, dt_util.utc_from_timestamp(frm),
                                                  None, ids, "hour", None, {"change"})
         except Exception:  # une statistique absente ne doit rien bloquer
             return None
@@ -965,7 +974,7 @@ class Coordinator:
                 t = x["start"].timestamp() if hasattr(x["start"], "timestamp") else float(x["start"])
                 if 1 <= dt_util.as_local(dt_util.utc_from_timestamp(t)).hour < 5:
                     hours[t] = hours.get(t, 0) + (x.get("change") or 0)
-        if len(hours) < 8:                            # au moins 2 nuits
+        if len(hours) < (4 if since > week else 8):  # au moins 2 nuits (une seule après un changement)
             return None
         return round(max(engine.quantile(sorted(hours.values()), 0.2) * 1000, 0), 1)
 
