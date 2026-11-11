@@ -87,7 +87,7 @@ Download `empreinte.zip` from the [latest release](https://github.com/nodyxstudi
 
 ### One plug, two appliances
 
-Washing machine and dryer on the same smart plug, never on together? **Configure → Shared plugs**: pick the plug and type "Washing machine, Dryer". Empreinte reads the plug's own curve, cuts each programme and recognises **which one** ran (one heating phase then the motor for the washer; heating all along, or about 600 W for a heat-pump dryer). Each gets its own sensors (running, power, measured energy) and its line in the Energy dashboard. In **Appliances**, one click on the right name corrects a programme and Empreinte learns. Works with any appliances: for ones it does not know, confirm one programme of each.
+Washing machine and dryer on the same smart plug, never on together? **Configure → Shared plugs**: pick the plug and type "Washing machine, Dryer". Empreinte reads the plug's own curve, cuts each programme and recognises **which one** ran (the washer first turns without heating, heats the water, then alternates motor and pauses; the dryer heats almost all the time from the start, or draws about 600 W for a heat-pump model, and its drum never stops). Each gets its own sensors (running, power, measured energy) and its line in the Energy dashboard. In **Appliances**, one click on the right name corrects a programme and Empreinte learns. Works with any appliances: for ones it does not know, confirm one programme of each.
 
 ## Requirements
 

@@ -1,8 +1,14 @@
 # Nouveautés
 
-## 1.1.2
+## 1.2.0
 
-- Bouton **Classement : repartir de zéro** (appareil « Bilan par jour ») : après un changement (nouvelles prises, nouveaux appareils…), « Qui consomme le plus » compte à partir de ce moment-là. Le mois suivant, il reprend depuis le 1er.
+- **Ce que coûte chaque appareil** : le classement du mois (`sensor.empreinte_bilan_classement`) donne aussi, pour chaque appareil connu, son coût sur la dernière heure, aujourd'hui, ce mois-ci et cette année (attribut `couts`), et le prix de chaque programme du jour sur une prise partagée (attribut `utilisations`).
+- Bouton **Classement : repartir de zéro** (appareil « Bilan par jour ») : après un changement (nouvelles prises, nouveaux appareils…), « Qui consomme le plus » compte à partir de ce moment-là, parts comprises. Le mois suivant, il reprend depuis le 1er.
+- Prises partagées : un lave-linge s'arrête sans cesse (le tambour tourne, s'arrête, repart), un sèche-linge tourne sans arrêt. Cet indice rend la reconnaissance sûre pour tous les programmes testés : lavages chauds, froids, éco, rapides, avec prélavage ; sèche-linge à résistance ou à pompe à chaleur.
+- Prises partagées : les noms anglais (« Washing machine », « Washer », « Dryer », « Dishwasher ») sont reconnus comme les noms français.
+- **Veilles permanentes** : après un changement des prises mesurées, elles se remesurent sur les nuits suivantes (une seule suffit), au lieu de garder les nuits d'avant.
+- Les capteurs des lignes du bilan qui n'existent plus (estimation retirée des réglages, ligne sortie du tableau Énergie) disparaissent de Home Assistant au lieu de rester « indisponibles ». Leur historique reste.
+- Corrections : classement remis à zéro en cours d'heure (valeurs fausses de HA tant que l'heure n'est pas compilée) ; une année ne peut plus être plus petite que son mois.
 
 ## 1.1.1
 

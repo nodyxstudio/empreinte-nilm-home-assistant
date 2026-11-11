@@ -94,7 +94,8 @@ Si le tableau Énergie connaît la consommation du réseau et le prix du kWh, Em
 | `sensor.empreinte_bilan_cout_<ligne>` | Le coût de chaque ligne du tableau Énergie |
 | `sensor.empreinte_bilan_veille_energie` | Les veilles permanentes, mesurées au plus bas des nuits |
 | `sensor.empreinte_bilan_frigo_energie` | Le frigo estimé (si réglé) |
-| `sensor.empreinte_bilan_classement` | Le classement du mois, ligne par ligne (en attributs) |
+| `sensor.empreinte_bilan_classement` | Le classement du mois, ligne par ligne, et ce que coûte chaque appareil sur l'heure, le jour, le mois et l'année (en attributs) |
+| `button.empreinte_classement_repartir_de_zero` | Fait repartir le classement de zéro (après de nouvelles prises, par exemple) |
 | `sensor.empreinte_bilan_conseils` | Les économies possibles en € par an, avec le détail en attributs |
 | `sensor.empreinte_bilan_conseil_1` à `_8` | Chaque conseil, du plus rentable au moins rentable |
 | `sensor.empreinte_bilan_evolution` | Ce mois-ci comparé au précédent, en % par jour |

@@ -31,11 +31,11 @@ def _norm(name: str) -> str:
 def kind_of(name: str) -> str | None:
     """Le type d'appareil qu'un nom désigne, pour les connaissances de départ."""
     n = _norm(name)
-    if "vaisselle" in n:
+    if "vaisselle" in n or "dishwasher" in n:
         return "lave_vaisselle"
-    if "seche" in n and "linge" in n:
+    if ("seche" in n and "linge" in n) or "dryer" in n or "tumble" in n:
         return "seche_linge"
-    if "linge" in n or "machine a laver" in n:
+    if "linge" in n or "machine a laver" in n or "washing" in n or "washer" in n:
         return "lave_linge"
     return None
 

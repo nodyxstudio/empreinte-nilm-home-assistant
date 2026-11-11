@@ -61,5 +61,16 @@ for truth, progs in cases.items():
         ok = n == truth and p >= S.SURE
         bad += not ok
         print(f"{'OK   ' if ok else 'ÉCHEC'} {truth:12s} {label:22s} -> {n} {p:.2f}  (D {f['D']//60} min, chauffe {f['heat']}, pos {f['heat_pos']}, mid {f['mid']}, blocs {f['blocks']})")
+# Les noms en anglais (README.en) donnent les mêmes connaissances de départ
+for nom, k in (("Washing machine", "lave_linge"), ("Washer", "lave_linge"), ("Dryer", "seche_linge"), ("Tumble dryer", "seche_linge"),
+               ("Dishwasher", "lave_vaisselle"), ("Sèche-linge", "seche_linge"), ("Lave-linge", "lave_linge"), ("Lave-vaisselle", "lave_vaisselle")):
+    ok = S.kind_of(nom) == k
+    bad += not ok
+    print(f"{'OK   ' if ok else 'ÉCHEC'} nom « {nom} » -> {S.kind_of(nom)}")
+runs, _ = S.find_runs(curve(dry(), 1_800_000_000), 1_800_000_000 + 30 * 3600)
+n, p = S.classify(runs[0]["f"], ["Washing machine", "Dryer"], {})
+ok = n == "Dryer" and p >= S.SURE
+bad += not ok
+print(f"{'OK   ' if ok else 'ÉCHEC'} prise « Washing machine, Dryer » : un séchage -> {n} {p:.2f}")
 print("\nTout est bon" if not bad else "\nIl y a des échecs")
 sys.exit(1 if bad else 0)

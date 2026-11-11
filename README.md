@@ -103,7 +103,7 @@ Téléchargez `empreinte.zip` dans la [dernière version](https://github.com/nod
 
 ### Une prise pour deux appareils
 
-Le lave-linge et le sèche-linge sur la même prise connectée, jamais allumés en même temps ? **Configurer → Prises partagées** : choisissez la prise et écrivez « Lave-linge, Sèche-linge ». Empreinte lit la courbe de la prise, découpe chaque programme et reconnaît **lequel des deux** a tourné : une chauffe au début puis le moteur pour le lave-linge, une chauffe tout du long (ou environ 600 W pour un modèle à pompe à chaleur) pour le sèche-linge. Chacun reçoit ses capteurs (en marche, puissance, énergie mesurée) et sa ligne dans le tableau Énergie. Dans **Appareils**, un clic sur le bon nom corrige un programme, et Empreinte apprend. Ça marche avec n'importe quels appareils : pour ceux qu'il ne connaît pas, confirmez un programme de chacun.
+Le lave-linge et le sèche-linge sur la même prise connectée, jamais allumés en même temps ? **Configurer → Prises partagées** : choisissez la prise et écrivez « Lave-linge, Sèche-linge ». Empreinte lit la courbe de la prise, découpe chaque programme et reconnaît **lequel des deux** a tourné : le lave-linge tourne d'abord sans chauffer, chauffe l'eau puis alterne moteur et pauses ; le sèche-linge chauffe dès le début presque tout le temps (ou tire environ 600 W pour un modèle à pompe à chaleur) et son tambour ne s'arrête pas. Chacun reçoit ses capteurs (en marche, puissance, énergie mesurée) et sa ligne dans le tableau Énergie. Dans **Appareils**, un clic sur le bon nom corrige un programme, et Empreinte apprend. Ça marche avec n'importe quels appareils : pour ceux qu'il ne connaît pas, confirmez un programme de chacun.
 
 ## Ce qu'il vous faut
 
